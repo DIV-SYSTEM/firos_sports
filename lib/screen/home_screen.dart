@@ -63,7 +63,7 @@ class HomeScreen extends StatelessWidget {
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const Home_Sport(initialUser: "Demo User")),
+                          builder: (_) => const SportMainScreen(initialUser: "Demo User")),
                         ),
                       ),
                     const SizedBox(height: 20),
