@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import '../widgets/custom_dropdown.dart';
+import '../providers/user_provider.dart';
+import '../model/user_model.dart';
 
 class CreateRequirementScreen extends StatefulWidget {
   const CreateRequirementScreen({Key? key}) : super(key: key);
@@ -77,6 +79,13 @@ class _CreateRequirementScreenState extends State<CreateRequirementScreen> {
   }
 
   Future<void> _submitForm() async {
+    final user = Provider.of<UserProvider>(context, listen: false).user;
+
+    if (user == null) {
+      await _showAlert("Error", "User is not logged in. Please login or register first.");
+      return;
+    }
+
     if (_formKey.currentState!.validate() &&
         _selectedDescription != null &&
         _selectedGender != null &&
@@ -86,12 +95,6 @@ class _CreateRequirementScreenState extends State<CreateRequirementScreen> {
         _startTimeController.text.isNotEmpty &&
         _endTimeController.text.isNotEmpty) {
       
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        await _showAlert("Error", "User is not logged in. Please login first.");
-        return;
-      }
-
       final timestamp = DateTime.now().toIso8601String();
       final requirementId = DateTime.now().millisecondsSinceEpoch.toString();
 
@@ -109,7 +112,7 @@ class _CreateRequirementScreenState extends State<CreateRequirementScreen> {
         "startTime": _startTimeController.text,
         "endTime": _endTimeController.text,
         "timer": _timerHours.toInt(),
-        "createdBy": user.uid,
+        "createdBy": user.id,
         "timestamp": timestamp,
         "sportImageUrl": ""
       };
@@ -126,8 +129,8 @@ class _CreateRequirementScreenState extends State<CreateRequirementScreen> {
 
         final response2 = await http.put(groupUrl, body: jsonEncode({
           "groupName": data["groupName"],
-          "createdBy": user.uid,
-          "members": [user.uid],
+          "createdBy": user.id,
+          "members": [user.id],
           "requests": {}
         }));
 
