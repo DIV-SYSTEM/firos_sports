@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import '../widgets/circular_avatar.dart';
 import '../providers/user_provider.dart';
+import 'chat_screen.dart';
 
 class ViewGroupsScreen extends StatefulWidget {
   const ViewGroupsScreen({super.key});
@@ -53,11 +54,9 @@ class _ViewGroupsScreenState extends State<ViewGroupsScreen> {
   Future<void> updateGroupRequest(String groupId, String userId, bool accept) async {
     final groupRef = "https://sportface-f9594-default-rtdb.firebaseio.com/groups/$groupId";
 
-    // Remove from requests
     await http.delete(Uri.parse("$groupRef/requests/$userId.json"));
 
     if (accept) {
-      // Add to members
       final memberRef = Uri.parse("$groupRef/members.json");
       await http.post(memberRef, body: jsonEncode(userId));
     }
@@ -173,6 +172,32 @@ class _ViewGroupsScreenState extends State<ViewGroupsScreen> {
                         Wrap(
                           spacing: 8,
                           children: members.map((uid) => CircularAvatar(userId: uid, imageUrl: '')).toList(),
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        // Chat Button
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ChatScreen(
+                                    groupId: groupId,
+                                    groupName: groupName,
+                                  ),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.chat),
+                            label: const Text("Chat"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blueAccent,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
                         ),
                       ],
                     ),
