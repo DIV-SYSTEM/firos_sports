@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../widgets/custom_dropdown.dart';
 import '../providers/user_provider.dart';
-import '../model/user_model.dart';
 
 class CreateRequirementScreen extends StatefulWidget {
   const CreateRequirementScreen({Key? key}) : super(key: key);
@@ -16,7 +15,6 @@ class CreateRequirementScreen extends StatefulWidget {
 
 class _CreateRequirementScreenState extends State<CreateRequirementScreen> {
   final _formKey = GlobalKey<FormState>();
-
   final TextEditingController _sportController = TextEditingController();
   final TextEditingController _groupNameController = TextEditingController();
   final TextEditingController _eventVenueController = TextEditingController();
@@ -44,13 +42,8 @@ class _CreateRequirementScreenState extends State<CreateRequirementScreen> {
   final List<String> typeOptions = ['Paid', 'Unpaid'];
 
   Future<void> _selectTime(TextEditingController controller) async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
-    );
-    if (picked != null) {
-      controller.text = picked.format(context);
-    }
+    final TimeOfDay? picked = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+    if (picked != null) controller.text = picked.format(context);
   }
 
   Future<void> _selectDate() async {
@@ -60,11 +53,7 @@ class _CreateRequirementScreenState extends State<CreateRequirementScreen> {
       firstDate: DateTime.now(),
       lastDate: DateTime(2100),
     );
-    if (picked != null) {
-      setState(() {
-        _selectedDate = picked;
-      });
-    }
+    if (picked != null) setState(() => _selectedDate = picked);
   }
 
   Future<void> _showAlert(String title, String message) async {
@@ -79,12 +68,16 @@ class _CreateRequirementScreenState extends State<CreateRequirementScreen> {
   }
 
   Future<void> _submitForm() async {
-    final user = Provider.of<UserProvider>(context, listen: false).user;
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final user = userProvider.user;
 
-    if (user == null) {
-      await _showAlert("Error", "User is not logged in. Please login or register first.");
+    if (user == null || user.id == null || user.id.isEmpty) {
+      await _showAlert("Error", "User is not logged in correctly. Cannot continue.");
+      print("❌ user.id is null or empty");
       return;
     }
+
+    print("✅ Current user ID: ${user.id}");
 
     if (_formKey.currentState!.validate() &&
         _selectedDescription != null &&
@@ -121,7 +114,11 @@ class _CreateRequirementScreenState extends State<CreateRequirementScreen> {
       final groupUrl = Uri.parse("https://sportface-f9594-default-rtdb.firebaseio.com/groups/$requirementId.json");
 
       try {
+        print("📤 Sending data to Firebase: $data");
+
         final response1 = await http.put(url, body: jsonEncode(data));
+        print("🔄 Req Response Code: ${response1.statusCode}, Body: ${response1.body}");
+
         if (response1.statusCode != 200) {
           await _showAlert("Requirement Upload Failed", "Status: ${response1.statusCode}\n${response1.body}");
           return;
@@ -133,16 +130,18 @@ class _CreateRequirementScreenState extends State<CreateRequirementScreen> {
           "members": [user.id],
           "requests": {}
         }));
+        print("🔄 Group Response Code: ${response2.statusCode}, Body: ${response2.body}");
 
         if (response2.statusCode != 200) {
           await _showAlert("Group Creation Failed", "Status: ${response2.statusCode}\n${response2.body}");
           return;
         }
 
-        await _showAlert("Success", "Requirement and Group Created Successfully.");
+        await _showAlert("✅ Success", "Requirement and Group Created Successfully.");
         Navigator.pop(context);
 
       } catch (e) {
+        print("❌ Exception: $e");
         await _showAlert("Exception", e.toString());
       }
     } else {
@@ -160,73 +159,26 @@ class _CreateRequirementScreenState extends State<CreateRequirementScreen> {
           key: _formKey,
           child: Column(
             children: [
-              TextFormField(
-                controller: _sportController,
-                decoration: const InputDecoration(labelText: 'Sport'),
-                validator: (value) => value!.isEmpty ? 'Required' : null,
-              ),
-              TextFormField(
-                controller: _groupNameController,
-                decoration: const InputDecoration(labelText: 'Group Name'),
-                validator: (value) => value!.isEmpty ? 'Required' : null,
-              ),
-              TextFormField(
-                controller: _eventVenueController,
-                decoration: const InputDecoration(labelText: 'Event Venue'),
-              ),
-              TextFormField(
-                controller: _meetVenueController,
-                decoration: const InputDecoration(labelText: 'Meet Venue'),
-              ),
-              TextFormField(
-                controller: _cityController,
-                decoration: const InputDecoration(labelText: 'City'),
-                validator: (value) => value!.isEmpty ? 'Required' : null,
-              ),
-              CustomDropdown(
-                label: "Description",
-                items: descriptionOptions,
-                value: _selectedDescription,
-                onChanged: (val) => setState(() => _selectedDescription = val),
-              ),
-              CustomDropdown(
-                label: "Gender",
-                items: genderOptions,
-                value: _selectedGender,
-                onChanged: (val) => setState(() => _selectedGender = val),
-              ),
-              CustomDropdown(
-                label: "Age Limit",
-                items: ageOptions,
-                value: _selectedAge,
-                onChanged: (val) => setState(() => _selectedAge = val),
-              ),
-              CustomDropdown(
-                label: "Type",
-                items: typeOptions,
-                value: _selectedType,
-                onChanged: (val) => setState(() => _selectedType = val),
-              ),
+              TextFormField(controller: _sportController, decoration: const InputDecoration(labelText: 'Sport'), validator: (value) => value!.isEmpty ? 'Required' : null),
+              TextFormField(controller: _groupNameController, decoration: const InputDecoration(labelText: 'Group Name'), validator: (value) => value!.isEmpty ? 'Required' : null),
+              TextFormField(controller: _eventVenueController, decoration: const InputDecoration(labelText: 'Event Venue')),
+              TextFormField(controller: _meetVenueController, decoration: const InputDecoration(labelText: 'Meet Venue')),
+              TextFormField(controller: _cityController, decoration: const InputDecoration(labelText: 'City'), validator: (value) => value!.isEmpty ? 'Required' : null),
+
+              CustomDropdown(label: "Description", items: descriptionOptions, value: _selectedDescription, onChanged: (val) => setState(() => _selectedDescription = val)),
+              CustomDropdown(label: "Gender", items: genderOptions, value: _selectedGender, onChanged: (val) => setState(() => _selectedGender = val)),
+              CustomDropdown(label: "Age Limit", items: ageOptions, value: _selectedAge, onChanged: (val) => setState(() => _selectedAge = val)),
+              CustomDropdown(label: "Type", items: typeOptions, value: _selectedType, onChanged: (val) => setState(() => _selectedType = val)),
+
               const SizedBox(height: 12),
               ListTile(
-                title: Text(_selectedDate != null
-                    ? "Date: ${DateFormat('yyyy-MM-dd').format(_selectedDate!)}"
-                    : "Select Date"),
+                title: Text(_selectedDate != null ? "Date: ${DateFormat('yyyy-MM-dd').format(_selectedDate!)}" : "Select Date"),
                 trailing: const Icon(Icons.calendar_today),
                 onTap: _selectDate,
               ),
-              TextFormField(
-                controller: _startTimeController,
-                readOnly: true,
-                decoration: const InputDecoration(labelText: 'Start Time'),
-                onTap: () => _selectTime(_startTimeController),
-              ),
-              TextFormField(
-                controller: _endTimeController,
-                readOnly: true,
-                decoration: const InputDecoration(labelText: 'End Time'),
-                onTap: () => _selectTime(_endTimeController),
-              ),
+              TextFormField(controller: _startTimeController, readOnly: true, decoration: const InputDecoration(labelText: 'Start Time'), onTap: () => _selectTime(_startTimeController)),
+              TextFormField(controller: _endTimeController, readOnly: true, decoration: const InputDecoration(labelText: 'End Time'), onTap: () => _selectTime(_endTimeController)),
+
               const SizedBox(height: 16),
               Text("Card Duration (hours): ${_timerHours.toInt()}"),
               Slider(
@@ -235,12 +187,9 @@ class _CreateRequirementScreenState extends State<CreateRequirementScreen> {
                 max: 72,
                 divisions: 71,
                 label: _timerHours.toInt().toString(),
-                onChanged: (value) {
-                  setState(() {
-                    _timerHours = value;
-                  });
-                },
+                onChanged: (value) => setState(() => _timerHours = value),
               ),
+
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 onPressed: _submitForm,
