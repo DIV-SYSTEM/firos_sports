@@ -135,7 +135,15 @@ class _SportMainScreenState extends State<SportMainScreen> {
                 ),
                 ElevatedButton.icon(
                   onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => ViewGroupsScreen()));
+                    Navigator.push(
+  context,
+  MaterialPageRoute(
+    builder: (_) => ViewGroupsScreen(
+      currentUser: FirebaseAuth.instance.currentUser!.uid,
+    ),
+  ),
+);
+
                   },
                   icon: const Icon(Icons.group),
                   label: const Text("View Groups"),
