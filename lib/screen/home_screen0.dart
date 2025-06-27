@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import '../widgets/companion_card.dart';
-import 'create_requirement_screen.dart';
-import 'view_group_screen.dart';
+import 'create_requirement_form.dart';
+import 'view_groups_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class SportMainScreen extends StatefulWidget {
