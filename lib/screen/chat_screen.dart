@@ -1,129 +1,137 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import '../data/companion_data.dart';
-import '../model/companion_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
 
 class ChatScreen extends StatefulWidget {
   final String groupId;
-  final String currentUser;
+  final String groupName;
 
-  const ChatScreen({super.key, required this.groupId, required this.currentUser});
+  const ChatScreen({super.key, required this.groupId, required this.groupName});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  final TextEditingController _messageController = TextEditingController();
+  final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
 
-  void _sendMessage() {
-    if (_messageController.text.isNotEmpty) {
-      setState(() {
-        groupMessages[widget.groupId] ??= [];
-        groupMessages[widget.groupId]!.add(
-          MessageModel(
-            sender: widget.currentUser,
-            text: _messageController.text,
-            timestamp: DateTime.now().toString(),
-          ),
-        );
-        _messageController.clear();
-        print("Sent message in group: ${widget.groupId} by ${widget.currentUser}");
-      });
-    }
+  List<Map<String, dynamic>> messages = [];
+  final userId = FirebaseAuth.instance.currentUser?.uid;
+
+  @override
+  void initState() {
+    super.initState();
+    listenToMessages();
+  }
+
+  void listenToMessages() {
+    final url = Uri.parse(
+      'https://sportface-f9594-default-rtdb.firebaseio.com/chats/${widget.groupId}.json',
+    );
+    http.get(url).then((res) {
+      if (res.statusCode == 200 && mounted) {
+        final Map<String, dynamic>? data = jsonDecode(res.body);
+        final List<Map<String, dynamic>> tempMessages = [];
+
+        data?.forEach((key, value) {
+          tempMessages.add({
+            'id': key,
+            'text': value['text'],
+            'senderId': value['senderId'],
+            'timestamp': value['timestamp'],
+          });
+        });
+
+        tempMessages.sort((a, b) => a['timestamp'].compareTo(b['timestamp']));
+
+        setState(() {
+          messages = tempMessages;
+        });
+
+        // Scroll to bottom
+        Future.delayed(const Duration(milliseconds: 100), () {
+          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        });
+      }
+    });
+  }
+
+  Future<void> sendMessage() async {
+    if (_controller.text.trim().isEmpty) return;
+
+    final message = {
+      "senderId": userId,
+      "text": _controller.text.trim(),
+      "timestamp": DateTime.now().millisecondsSinceEpoch
+    };
+
+    final url = Uri.parse(
+      'https://sportface-f9594-default-rtdb.firebaseio.com/chats/${widget.groupId}.json',
+    );
+
+    await http.post(url, body: jsonEncode(message));
+    _controller.clear();
+    listenToMessages(); // reload to reflect new message
   }
 
   @override
   Widget build(BuildContext context) {
-    final messages = groupMessages[widget.groupId] ?? [];
-    final group = groupData.firstWhere((g) => g.groupId == widget.groupId);
-
-    if (!group.members.contains(widget.currentUser)) {
-      return Scaffold(
-        appBar: AppBar(title: Text(group.groupName)),
-        body: const Center(child: Text("You are not a member of this group.")),
-      );
-    }
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
 
     return Scaffold(
-      appBar: AppBar(title: Text(group.groupName)),
+      appBar: AppBar(
+        title: Text(widget.groupName),
+      ),
       body: Column(
         children: [
           Expanded(
-            child: messages.isEmpty
-                ? const Center(child: Text("No messages yet."))
-                : ListView.builder(
-                    itemCount: messages.length,
-                    itemBuilder: (context, index) {
-                      final message = messages[index];
-                      final isMe = message.sender == widget.currentUser;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 4, horizontal: 8),
-                        child: Align(
-                          alignment:
-                              isMe ? Alignment.centerRight : Alignment.centerLeft,
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: isMe ? Colors.deepPurple : Colors.grey[300],
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: isMe
-                                  ? CrossAxisAlignment.end
-                                  : CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  message.sender,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: isMe ? Colors.white : Colors.black,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  message.text,
-                                  style: TextStyle(
-                                    color: isMe ? Colors.white : Colors.black,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  message.timestamp,
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: isMe
-                                        ? Colors.white70
-                                        : Colors.black54,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
+            child: ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(12),
+              itemCount: messages.length,
+              itemBuilder: (context, index) {
+                final msg = messages[index];
+                final isMe = msg['senderId'] == currentUserId;
+
+                return Align(
+                  alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    padding: const EdgeInsets.all(10),
+                    constraints: const BoxConstraints(maxWidth: 250),
+                    decoration: BoxDecoration(
+                      color: isMe ? Colors.blue.shade100 : Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      msg['text'] ?? '',
+                      style: const TextStyle(fontSize: 15),
+                    ),
                   ),
+                );
+              },
+            ),
           ),
+          const Divider(height: 1),
           Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6),
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
-                    controller: _messageController,
-                    decoration: InputDecoration(
-                      hintText: "Type a message...",
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                    controller: _controller,
+                    decoration: const InputDecoration(
+                      hintText: 'Type a message...',
+                      border: InputBorder.none,
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
                 IconButton(
-                  onPressed: _sendMessage,
-                  icon: const Icon(Icons.send, color: Colors.deepPurple),
+                  icon: const Icon(Icons.send),
+                  onPressed: sendMessage,
+                  color: Colors.blueAccent,
                 ),
               ],
             ),
