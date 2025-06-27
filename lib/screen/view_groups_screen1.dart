@@ -119,9 +119,9 @@ class _ViewGroupsScreenState extends State<ViewGroupsScreen> {
                       itemCount: userGroups.length,
                       itemBuilder: (context, index) {
                         final group = userGroups[index];
-                        final event = companionData.firstWhere(
+                        final event = foodData.firstWhere(
                           (e) => e.id == group.eventId,
-                          orElse: () => CompanionModel(
+                          orElse: () => FoodModel(
                             id: group.eventId,
                             sportName: "Unknown",
                             logoPath: "assets/images/default.jpg",
