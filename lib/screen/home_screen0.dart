@@ -135,7 +135,7 @@ class _SportMainScreenState extends State<SportMainScreen> {
                 ),
                 ElevatedButton.icon(
                   onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => ViewGroupsScreen(currentUser: userId ?? '')));
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => ViewGroupsScreen()));
                   },
                   icon: const Icon(Icons.group),
                   label: const Text("View Groups"),
