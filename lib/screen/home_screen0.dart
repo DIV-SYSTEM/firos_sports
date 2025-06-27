@@ -2,10 +2,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+
 import '../widgets/companion_card.dart';
 import 'create_requirement_form.dart';
 import 'view_groups_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../providers/user_provider.dart';
 
 class SportMainScreen extends StatefulWidget {
   const SportMainScreen({super.key});
@@ -82,11 +84,6 @@ class _SportMainScreenState extends State<SportMainScreen> {
           item['date'] != null && item['date'] == DateFormat('yyyy-MM-dd').format(selectedDate!)).toList();
     }
 
-    // (Optional) implement actual geolocation filtering here
-    if (isDistanceActive && distance > 0) {
-      // Placeholder: no-op, assume all are within range
-    }
-
     setState(() {
       filteredData = results;
     });
@@ -109,8 +106,8 @@ class _SportMainScreenState extends State<SportMainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    final userId = user?.uid;
+    final user = Provider.of<UserProvider>(context).user;
+    final userId = user?.id;
 
     return Scaffold(
       appBar: AppBar(
@@ -136,14 +133,11 @@ class _SportMainScreenState extends State<SportMainScreen> {
                 ElevatedButton.icon(
                   onPressed: () {
                     Navigator.push(
-  context,
-  MaterialPageRoute(
-    builder: (_) => ViewGroupsScreen(
-      currentUser: FirebaseAuth.instance.currentUser!.uid,
-    ),
-  ),
-);
-
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ViewGroupsScreen(),
+                      ),
+                    );
                   },
                   icon: const Icon(Icons.group),
                   label: const Text("View Groups"),
