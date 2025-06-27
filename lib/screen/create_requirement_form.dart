@@ -65,6 +65,17 @@ class _CreateRequirementScreenState extends State<CreateRequirementScreen> {
     }
   }
 
+  Future<void> _showAlert(String title, String message) async {
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text("OK"))],
+      ),
+    );
+  }
+
   Future<void> _submitForm() async {
     if (_formKey.currentState!.validate() &&
         _selectedDescription != null &&
@@ -76,7 +87,10 @@ class _CreateRequirementScreenState extends State<CreateRequirementScreen> {
         _endTimeController.text.isNotEmpty) {
       
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+      if (user == null) {
+        await _showAlert("Error", "User is not logged in. Please login first.");
+        return;
+      }
 
       final timestamp = DateTime.now().toIso8601String();
       final requirementId = DateTime.now().millisecondsSinceEpoch.toString();
@@ -97,39 +111,46 @@ class _CreateRequirementScreenState extends State<CreateRequirementScreen> {
         "timer": _timerHours.toInt(),
         "createdBy": user.uid,
         "timestamp": timestamp,
-        "sportImageUrl": "" // Add later if needed
+        "sportImageUrl": ""
       };
 
       final url = Uri.parse("https://sportface-f9594-default-rtdb.firebaseio.com/requirements/$requirementId.json");
       final groupUrl = Uri.parse("https://sportface-f9594-default-rtdb.firebaseio.com/groups/$requirementId.json");
 
       try {
-        await http.put(url, body: jsonEncode(data));
-        await http.put(groupUrl, body: jsonEncode({
+        final response1 = await http.put(url, body: jsonEncode(data));
+        if (response1.statusCode != 200) {
+          await _showAlert("Requirement Upload Failed", "Status: ${response1.statusCode}\n${response1.body}");
+          return;
+        }
+
+        final response2 = await http.put(groupUrl, body: jsonEncode({
           "groupName": data["groupName"],
           "createdBy": user.uid,
           "members": [user.uid],
           "requests": {}
         }));
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Requirement Created Successfully")),
-        );
+        if (response2.statusCode != 200) {
+          await _showAlert("Group Creation Failed", "Status: ${response2.statusCode}\n${response2.body}");
+          return;
+        }
+
+        await _showAlert("Success", "Requirement and Group Created Successfully.");
         Navigator.pop(context);
+
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e")),
-        );
+        await _showAlert("Exception", e.toString());
       }
+    } else {
+      await _showAlert("Form Incomplete", "Please fill all fields properly.");
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Create Requirement'),
-      ),
+      appBar: AppBar(title: const Text('Create Requirement')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
