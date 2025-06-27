@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../widgets/circular_avatar.dart';
+import '../providers/user_provider.dart';
 
 class CompanionCard extends StatelessWidget {
   final Map<String, dynamic> data;
@@ -14,13 +16,13 @@ class CompanionCard extends StatelessWidget {
       'badminton': 'assets/images/badminton.png',
       'tennis': 'assets/images/tennis.png',
       'basketball': 'assets/images/basketball.png',
-      // Add more as needed
     };
     return sportMap[lowerSport] ?? 'assets/images/default_sport.png';
   }
 
   @override
   Widget build(BuildContext context) {
+    final currentUserId = Provider.of<UserProvider>(context).user?.id;
     final organiserId = data['createdBy'] ?? '';
     final sport = data['sport'] ?? 'Unknown';
     final city = data['city'] ?? 'Unknown City';
@@ -101,6 +103,7 @@ class CompanionCard extends StatelessWidget {
                   child: ElevatedButton.icon(
                     onPressed: () {
                       // TODO: Implement request logic
+                      debugPrint('Request sent by $currentUserId to $organiserId');
                     },
                     icon: const Icon(Icons.send),
                     label: const Text("Request"),
