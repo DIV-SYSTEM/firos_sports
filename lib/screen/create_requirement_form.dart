@@ -1,331 +1,229 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import '../model/companion_model.dart';
-import '../data/companion_data.dart';
-import '../utils/constants.dart';
-import '../utils/validators.dart';
-import 'map_picker-screen.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../widgets/custom_dropdown.dart';
 
-class CreateRequirementForm extends StatefulWidget {
-  final String currentUser;
-  final Function(CompanionModel, GroupModel) onCreate;
-
-  const CreateRequirementForm({
-    super.key,
-    required this.currentUser,
-    required this.onCreate,
-  });
+class CreateRequirementScreen extends StatefulWidget {
+  const CreateRequirementScreen({Key? key}) : super(key: key);
 
   @override
-  State<CreateRequirementForm> createState() => _CreateRequirementFormState();
+  State<CreateRequirementScreen> createState() => _CreateRequirementScreenState();
 }
 
-class _CreateRequirementFormState extends State<CreateRequirementForm> {
+class _CreateRequirementScreenState extends State<CreateRequirementScreen> {
   final _formKey = GlobalKey<FormState>();
-  String? sportName;
-  final TextEditingController organiserController = TextEditingController();
-  final TextEditingController groupNameController = TextEditingController();
-  final TextEditingController venueController = TextEditingController();
-  final TextEditingController cityController = TextEditingController();
-  String? description; // Changed from TextEditingController to String
-  DateTime? selectedDate;
-  TimeOfDay? selectedTime;
-  double? latitude;
-  double? longitude;
 
-  String? gender;
-  String? ageLimit;
-  String? paidStatus;
+  final TextEditingController _sportController = TextEditingController();
+  final TextEditingController _groupNameController = TextEditingController();
+  final TextEditingController _eventVenueController = TextEditingController();
+  final TextEditingController _meetVenueController = TextEditingController();
+  final TextEditingController _cityController = TextEditingController();
+  final TextEditingController _startTimeController = TextEditingController();
+  final TextEditingController _endTimeController = TextEditingController();
 
-  final List<String> sports = Constants.sports;
+  String? _selectedDescription;
+  String? _selectedGender;
+  String? _selectedAge;
+  String? _selectedType;
+  DateTime? _selectedDate;
+  double _timerHours = 1;
+
   final List<String> descriptionOptions = [
-    'Looking for a Professional Companion',
-    'Looking for a Solo Companion',
-    'Looking for an Online Companion',
-    'Looking for Multiple Companions',
+    'Looking for professional companion',
+    'Looking for a solo companion',
+    'Looking for an online companion',
+    'Looking for multiple companions'
   ];
 
-  String getLogoPath(String sport) {
-    return "assets/images/${sport.toLowerCase()}.jpg";
-  }
+  final List<String> genderOptions = ['All', 'Male', 'Female'];
+  final List<String> ageOptions = ['18-25', '26-33', '34-40', '40+'];
+  final List<String> typeOptions = ['Paid', 'Unpaid'];
 
-  @override
-  void initState() {
-    super.initState();
-    organiserController.text = widget.currentUser;
-  }
-
-  void _pickDate() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: now,
-      firstDate: now,
-      lastDate: DateTime(2030),
-    );
-    if (picked != null) {
-      setState(() => selectedDate = picked);
-    }
-  }
-
-  void _pickTime() async {
-    final picked = await showTimePicker(
+  Future<void> _selectTime(TextEditingController controller) async {
+    final TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.now(),
     );
     if (picked != null) {
-      setState(() => selectedTime = picked);
+      controller.text = picked.format(context);
     }
   }
 
-  void _submitForm() {
+  Future<void> _selectDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().add(Duration(days: 1)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedDate = picked;
+      });
+    }
+  }
+
+  Future<void> _submitForm() async {
     if (_formKey.currentState!.validate() &&
-        selectedDate != null &&
-        selectedTime != null &&
-        sportName != null &&
-        gender != null &&
-        ageLimit != null &&
-        paidStatus != null &&
-        latitude != null &&
-        longitude != null &&
-        description != null) {
-      final eventId = "event${companionData.length + 1}";
-      final groupId = "group${groupData.length + 1}";
-      final organiserName = organiserController.text.trim();
-      final groupName = groupNameController.text.trim().isEmpty
-          ? "$sportName Group by $organiserName"
-          : groupNameController.text.trim();
-      final newRequirement = CompanionModel(
-        id: eventId,
-        sportName: sportName!,
-        logoPath: getLogoPath(sportName!),
-        organiserName: organiserName,
-        venue: venueController.text.trim(),
-        city: cityController.text.trim(),
-        description: description!, // Updated to use description string
-        date:
-            "${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}",
-        time: selectedTime!.format(context),
-        gender: gender!,
-        ageLimit: ageLimit!,
-        paidStatus: paidStatus!,
-        latitude: latitude!,
-        longitude: longitude!,
-      );
-      final newGroup = GroupModel(
-        groupId: groupId,
-        eventId: eventId,
-        groupName: groupName,
-        organiserName: organiserName,
-        members: [organiserName],
-      );
-      widget.onCreate(newRequirement, newGroup);
-      Navigator.pop(context);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill all required fields")),
-      );
+        _selectedDescription != null &&
+        _selectedGender != null &&
+        _selectedAge != null &&
+        _selectedType != null &&
+        _selectedDate != null &&
+        _startTimeController.text.isNotEmpty &&
+        _endTimeController.text.isNotEmpty) {
+      
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final timestamp = DateTime.now().toIso8601String();
+      final requirementId = DateTime.now().millisecondsSinceEpoch.toString();
+
+      final data = {
+        "sport": _sportController.text.trim(),
+        "groupName": _groupNameController.text.trim(),
+        "eventVenue": _eventVenueController.text.trim(),
+        "meetVenue": _meetVenueController.text.trim(),
+        "city": _cityController.text.trim(),
+        "description": _selectedDescription,
+        "gender": _selectedGender,
+        "ageLimit": _selectedAge,
+        "type": _selectedType,
+        "date": DateFormat('yyyy-MM-dd').format(_selectedDate!),
+        "startTime": _startTimeController.text,
+        "endTime": _endTimeController.text,
+        "timer": _timerHours.toInt(),
+        "createdBy": user.uid,
+        "timestamp": timestamp,
+        "sportImageUrl": "" // Add later if needed
+      };
+
+      final url = Uri.parse("https://sportface-f9594-default-rtdb.firebaseio.com/requirements/$requirementId.json");
+      final groupUrl = Uri.parse("https://sportface-f9594-default-rtdb.firebaseio.com/groups/$requirementId.json");
+
+      try {
+        await http.put(url, body: jsonEncode(data));
+        await http.put(groupUrl, body: jsonEncode({
+          "groupName": data["groupName"],
+          "createdBy": user.uid,
+          "members": [user.uid],
+          "requests": {}
+        }));
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Requirement Created Successfully")),
+        );
+        Navigator.pop(context);
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: $e")),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Create Requirement")),
-      body: Padding(
+      appBar: AppBar(
+        title: const Text('Create Requirement'),
+      ),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                DropdownButtonFormField<String>(
-                  value: sportName,
-                  items: sports.map((sport) {
-                    return DropdownMenuItem(
-                      value: sport,
-                      child: Text(sport),
-                    );
-                  }).toList(),
-                  onChanged: (value) => setState(() => sportName = value),
-                  decoration: const InputDecoration(
-                    labelText: "Sport",
-                    prefixIcon: Icon(Icons.sports_soccer),
-                  ),
-                  validator: Validators.validateSport,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: organiserController,
-                  decoration: const InputDecoration(
-                    labelText: "Organiser Name",
-                    prefixIcon: Icon(Icons.person),
-                    hintText: "e.g., Demo User",
-                  ),
-                  validator: Validators.validateName,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: groupNameController,
-                  decoration: const InputDecoration(
-                    labelText: "Group Name (optional)",
-                    prefixIcon: Icon(Icons.group),
-                    hintText: "e.g., Weekend Warriors",
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: venueController,
-                  readOnly: true,
-                  decoration: const InputDecoration(
-                    labelText: "Venue",
-                    prefixIcon: Icon(Icons.map),
-                    hintText: "Tap to pick from map",
-                  ),
-                  onTap: () async {
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const MapPickerScreen(),
-                      ),
-                    );
-                    if (result != null && result is Map) {
-                      setState(() {
-                        venueController.text = result['address'];
-                        latitude = result['latitude'];
-                        longitude = result['longitude'];
-                      });
-                    }
-                  },
-                  validator: Validators.validateVenue,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: cityController,
-                  decoration: const InputDecoration(
-                    labelText: "City",
-                    prefixIcon: Icon(Icons.location_city),
-                  ),
-                  validator: (value) =>
-                      value == null || value.isEmpty ? 'Please enter city' : null,
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: description,
-                  items: descriptionOptions.map((desc) {
-                    return DropdownMenuItem(
-                      value: desc,
-                      child: Text(
-                        desc,
-                        overflow: TextOverflow.ellipsis, // Prevents text overflow
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (value) => setState(() => description = value),
-                  decoration: const InputDecoration(
-                    labelText: "Description",
-                    prefixIcon: Icon(Icons.description),
-                  ),
-                  validator: (value) =>
-                      value == null || value.isEmpty ? 'Please select a description' : null,
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: gender,
-                  items: ['All', 'Male', 'Female'].map((g) {
-                    return DropdownMenuItem(
-                      value: g,
-                      child: Text(g),
-                    );
-                  }).toList(),
-                  onChanged: (value) => setState(() => gender = value),
-                  decoration: const InputDecoration(
-                    labelText: "Gender",
-                    prefixIcon: Icon(Icons.transgender),
-                  ),
-                  validator: (value) =>
-                      value == null || value.isEmpty ? 'Please select gender' : null,
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: ageLimit,
-                  items: [
-                    '18-25',
-                    '26-33',
-                    '33-40',
-                    '41-50',
-                    '50-65',
-                    '65+',
-                  ].map((age) {
-                    return DropdownMenuItem(
-                      value: age,
-                      child: Text(age),
-                    );
-                  }).toList(),
-                  onChanged: (value) => setState(() => ageLimit = value),
-                  decoration: const InputDecoration(
-                    labelText: "Age Limit",
-                    prefixIcon: Icon(Icons.calendar_today),
-                  ),
-                  validator: (value) =>
-                      value == null || value.isEmpty ? 'Please select age limit' : null,
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: paidStatus,
-                  items: Constants.paidStatuses.map((status) {
-                    return DropdownMenuItem(
-                      value: status,
-                      child: Text(status),
-                    );
-                  }).toList(),
-                  onChanged: (value) => setState(() => paidStatus = value),
-                  decoration: const InputDecoration(
-                    labelText: "Paid / Unpaid",
-                    prefixIcon: Icon(Icons.attach_money),
-                  ),
-                  validator: Validators.validatePaidStatus,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  readOnly: true,
-                  onTap: _pickDate,
-                  decoration: InputDecoration(
-                    labelText: "Date",
-                    prefixIcon: const Icon(Icons.calendar_today),
-                    hintText: selectedDate == null
-                        ? 'Choose Date'
-                        : "${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}",
-                  ),
-                  validator: (value) =>
-                      selectedDate == null ? 'Please select a date' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  readOnly: true,
-                  onTap: _pickTime,
-                  decoration: InputDecoration(
-                    labelText: "Time",
-                    prefixIcon: const Icon(Icons.access_time),
-                    hintText: selectedTime == null
-                        ? 'Choose Time'
-                        : selectedTime!.format(context),
-                  ),
-                  validator: (value) =>
-                      selectedTime == null ? 'Please select a time' : null,
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton.icon(
-                  onPressed: _submitForm,
-                  icon: const Icon(Icons.check_circle),
-                  label: const Text("Create"),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(50),
-                    backgroundColor: Colors.deepPurple,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-              ],
-            ),
+          child: Column(
+            children: [
+              TextFormField(
+                controller: _sportController,
+                decoration: const InputDecoration(labelText: 'Sport'),
+                validator: (value) => value!.isEmpty ? 'Required' : null,
+              ),
+              TextFormField(
+                controller: _groupNameController,
+                decoration: const InputDecoration(labelText: 'Group Name'),
+                validator: (value) => value!.isEmpty ? 'Required' : null,
+              ),
+              TextFormField(
+                controller: _eventVenueController,
+                decoration: const InputDecoration(labelText: 'Event Venue'),
+              ),
+              TextFormField(
+                controller: _meetVenueController,
+                decoration: const InputDecoration(labelText: 'Meet Venue'),
+              ),
+              TextFormField(
+                controller: _cityController,
+                decoration: const InputDecoration(labelText: 'City'),
+                validator: (value) => value!.isEmpty ? 'Required' : null,
+              ),
+              CustomDropdown(
+                label: "Description",
+                items: descriptionOptions,
+                value: _selectedDescription,
+                onChanged: (val) => setState(() => _selectedDescription = val),
+              ),
+              CustomDropdown(
+                label: "Gender",
+                items: genderOptions,
+                value: _selectedGender,
+                onChanged: (val) => setState(() => _selectedGender = val),
+              ),
+              CustomDropdown(
+                label: "Age Limit",
+                items: ageOptions,
+                value: _selectedAge,
+                onChanged: (val) => setState(() => _selectedAge = val),
+              ),
+              CustomDropdown(
+                label: "Type",
+                items: typeOptions,
+                value: _selectedType,
+                onChanged: (val) => setState(() => _selectedType = val),
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                title: Text(_selectedDate != null
+                    ? "Date: ${DateFormat('yyyy-MM-dd').format(_selectedDate!)}"
+                    : "Select Date"),
+                trailing: const Icon(Icons.calendar_today),
+                onTap: _selectDate,
+              ),
+              TextFormField(
+                controller: _startTimeController,
+                readOnly: true,
+                decoration: const InputDecoration(labelText: 'Start Time'),
+                onTap: () => _selectTime(_startTimeController),
+              ),
+              TextFormField(
+                controller: _endTimeController,
+                readOnly: true,
+                decoration: const InputDecoration(labelText: 'End Time'),
+                onTap: () => _selectTime(_endTimeController),
+              ),
+              const SizedBox(height: 16),
+              Text("Card Duration (hours): ${_timerHours.toInt()}"),
+              Slider(
+                value: _timerHours,
+                min: 1,
+                max: 72,
+                divisions: 71,
+                label: _timerHours.toInt().toString(),
+                onChanged: (value) {
+                  setState(() {
+                    _timerHours = value;
+                  });
+                },
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _submitForm,
+                icon: const Icon(Icons.send),
+                label: const Text("Submit"),
+              ),
+            ],
           ),
         ),
       ),
