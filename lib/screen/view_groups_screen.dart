@@ -1,12 +1,12 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import '../widgets/circular_avatar.dart';
- 
-class ViewGroupsScreen extends StatefulWidget {
-  final String currentUser;
+import '../providers/user_provider.dart';
 
-  const ViewGroupsScreen({super.key, required this.currentUser});
+class ViewGroupsScreen extends StatefulWidget {
+  const ViewGroupsScreen({super.key});
 
   @override
   State<ViewGroupsScreen> createState() => _ViewGroupsScreenState();
@@ -22,6 +22,9 @@ class _ViewGroupsScreenState extends State<ViewGroupsScreen> {
   }
 
   Future<void> fetchGroups() async {
+    final userId = Provider.of<UserProvider>(context, listen: false).user?.id;
+    if (userId == null) return;
+
     final url = Uri.parse("https://sportface-f9594-default-rtdb.firebaseio.com/groups.json");
     final res = await http.get(url);
 
@@ -30,7 +33,7 @@ class _ViewGroupsScreenState extends State<ViewGroupsScreen> {
       final List<Map<String, dynamic>> filtered = [];
 
       data.forEach((key, value) {
-        if (value['createdBy'] == widget.currentUser) {
+        if (value['createdBy'] == userId) {
           filtered.add({"id": key, ...value});
         }
       });
