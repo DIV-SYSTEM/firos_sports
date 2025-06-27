@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../data/companion_data.dart';
 import '../widgets/companion_card.dart';
 import '../model/companion_model.dart';
-import 'chat_screen.dart';
+import 'chat_food.dart';
 
 class ViewGroupsScreen extends StatefulWidget {
   final String currentUser;
