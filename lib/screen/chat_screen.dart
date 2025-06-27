@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
+import '../providers/user_provider.dart';
 
 class ChatScreen extends StatefulWidget {
   final String groupId;
@@ -18,7 +19,6 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
 
   List<Map<String, dynamic>> messages = [];
-  final userId = FirebaseAuth.instance.currentUser?.uid;
 
   @override
   void initState() {
@@ -30,6 +30,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final url = Uri.parse(
       'https://sportface-f9594-default-rtdb.firebaseio.com/chats/${widget.groupId}.json',
     );
+
     http.get(url).then((res) {
       if (res.statusCode == 200 && mounted) {
         final Map<String, dynamic>? data = jsonDecode(res.body);
@@ -52,19 +53,22 @@ class _ChatScreenState extends State<ChatScreen> {
 
         // Scroll to bottom
         Future.delayed(const Duration(milliseconds: 100), () {
-          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+          if (_scrollController.hasClients) {
+            _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+          }
         });
       }
     });
   }
 
   Future<void> sendMessage() async {
-    if (_controller.text.trim().isEmpty) return;
+    final userId = Provider.of<UserProvider>(context, listen: false).user?.id;
+    if (userId == null || _controller.text.trim().isEmpty) return;
 
     final message = {
       "senderId": userId,
       "text": _controller.text.trim(),
-      "timestamp": DateTime.now().millisecondsSinceEpoch
+      "timestamp": DateTime.now().millisecondsSinceEpoch,
     };
 
     final url = Uri.parse(
@@ -73,12 +77,12 @@ class _ChatScreenState extends State<ChatScreen> {
 
     await http.post(url, body: jsonEncode(message));
     _controller.clear();
-    listenToMessages(); // reload to reflect new message
+    listenToMessages();
   }
 
   @override
   Widget build(BuildContext context) {
-    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    final currentUserId = Provider.of<UserProvider>(context).user?.id;
 
     return Scaffold(
       appBar: AppBar(
