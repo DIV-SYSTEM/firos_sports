@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../widgets/circular_avatar.dart';
-
+ 
 class ViewGroupsScreen extends StatefulWidget {
   final String currentUser;
 
