@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import '../widgets/circular_avatar.dart';
 import '../providers/user_provider.dart';
-
+ 
 class CompanionCard extends StatefulWidget {
   final Map<String, dynamic> data;
 
