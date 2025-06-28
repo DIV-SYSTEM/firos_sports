@@ -48,25 +48,28 @@ class _SportMainScreenState extends State<SportMainScreen> {
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic>? data = jsonDecode(response.body);
-        final items = data?.entries.map((e) => {'id': e.key, ...e.value}).toList() ?? [];
-
-        setState(() {
-          allData = items;
-          filteredData = items;
-          isLoading = false;
-        });
-      } else {
-        setState(() {
-          allData = [];
-          filteredData = [];
-          isLoading = false;
-        });
+        final decoded = jsonDecode(response.body);
+        if (decoded != null && decoded is Map<String, dynamic>) {
+          final items = decoded.entries.map((e) => {'id': e.key, ...e.value}).toList();
+          setState(() {
+            allData = items;
+            filteredData = items;
+          });
+        } else {
+          setState(() {
+            allData = [];
+            filteredData = [];
+          });
+        }
       }
     } catch (e) {
+      debugPrint("Error fetching data: $e");
       setState(() {
         allData = [];
         filteredData = [];
+      });
+    } finally {
+      setState(() {
         isLoading = false;
       });
     }
@@ -130,7 +133,6 @@ class _SportMainScreenState extends State<SportMainScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        leading: const BackButton(),
         title: const Text("Find Sport Companions"),
       ),
       body: isLoading
@@ -150,7 +152,7 @@ class _SportMainScreenState extends State<SportMainScreen> {
                             context,
                             MaterialPageRoute(builder: (_) => const CreateRequirementScreen()),
                           );
-                          await fetchData(); // refresh list after form
+                          await fetchData(); // refresh list
                         },
                         icon: const Icon(Icons.add),
                         label: const Text("Create Requirement"),
@@ -254,9 +256,11 @@ class _SportMainScreenState extends State<SportMainScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Companion Cards
                       if (filteredData.isEmpty)
-                        const Center(child: Text("No companions found")),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 20),
+                          child: Center(child: Text("No companions found")),
+                        ),
                       ...filteredData.map((item) => CompanionCard(data: item)).toList(),
                     ],
                   ),
