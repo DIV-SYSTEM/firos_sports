@@ -16,21 +16,24 @@ class ProfileScreenLite extends StatelessWidget {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircularAvatar(imageUrl: user?.imageUrl, radius: 40, userId: user?.id),
+          CircularAvatar(imageUrl: user?.imageUrl, radius: 50, userId: user?.id),
           const SizedBox(height: 16),
-          Text('Name: ${user?.name ?? "N/A"}', style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text('Name: ${user?.name ?? "N/A"}'),
           const SizedBox(height: 8),
           Text('Email: ${user?.email ?? "N/A"}'),
           const SizedBox(height: 8),
           Text('Age: ${user?.age?.toString() ?? "N/A"}'),
           const SizedBox(height: 8),
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: [
+            children: const [
               Text('Verified '),
               Text(
                 '✅️',
-                style: TextStyle(color: Color(0xFF1DA1F2), fontSize: 16),
+                style: TextStyle(
+                  color: Color(0xFF1DA1F2), // Twitter/X blue
+                  fontSize: 16,
+                ),
               ),
             ],
           ),
