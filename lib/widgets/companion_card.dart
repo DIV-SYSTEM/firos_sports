@@ -7,7 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../widgets/circular_avatar.dart';
 import '../providers/user_provider.dart';
-import '../screen/profile_screen1.dart'; // 👈 New popup screen
+import '../screen/profile_screen1.dart'; // For ProfileScreenLite popup
 
 class CompanionCard extends StatefulWidget {
   final Map<String, dynamic> data;
@@ -121,15 +121,13 @@ class _CompanionCardState extends State<CompanionCard> {
             ),
           );
         } else {
-          debugPrint("⚠️ No organiser data found");
           _showErrorDialog(context, "User not found.");
         }
       } else {
-        debugPrint("❌ HTTP error ${res.statusCode}");
         _showErrorDialog(context, "Failed to fetch user.");
       }
     } catch (e) {
-      debugPrint("❌ Exception in organiser fetch: $e");
+      debugPrint("❌ Exception: $e");
       _showErrorDialog(context, "Something went wrong.");
     }
   }
