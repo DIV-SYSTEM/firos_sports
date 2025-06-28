@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import '../widgets/circular_avatar.dart';
 import '../providers/user_provider.dart';
- 
+
 class CompanionCard extends StatefulWidget {
   final Map<String, dynamic> data;
 
@@ -23,10 +23,10 @@ class _CompanionCardState extends State<CompanionCard> {
   void initState() {
     super.initState();
     try {
-      debugPrint("CompanionCard INIT for: ${widget.data['groupName']}");
+      debugPrint("🟢 INIT CompanionCard for: ${widget.data['groupName']}");
       checkGroupStatus();
     } catch (e) {
-      debugPrint("Init error: $e");
+      debugPrint("❌ Init error: $e");
       errorLog = "Init error: $e";
     }
   }
@@ -35,7 +35,7 @@ class _CompanionCardState extends State<CompanionCard> {
     final userId = Provider.of<UserProvider>(context, listen: false).user?.id;
     final groupId = widget.data['groupId'];
     if (userId == null || groupId == null) {
-      debugPrint("Group status check skipped: userId or groupId null");
+      debugPrint("⚠️ Skipped group status check: userId/groupId missing");
       return;
     }
 
@@ -53,12 +53,12 @@ class _CompanionCardState extends State<CompanionCard> {
           isMember = members.contains(userId);
           isRequested = requests.containsKey(userId);
         });
-        debugPrint("Group status: isMember=$isMember, isRequested=$isRequested");
+        debugPrint("✅ GroupStatus: isMember=$isMember, isRequested=$isRequested");
       } else {
-        debugPrint("Failed to fetch group $groupId: ${res.statusCode}");
+        debugPrint("❌ Failed to fetch group $groupId: ${res.statusCode}");
       }
     } catch (e) {
-      debugPrint("checkGroupStatus error: $e");
+      debugPrint("❌ checkGroupStatus error: $e");
     }
   }
 
@@ -73,15 +73,13 @@ class _CompanionCardState extends State<CompanionCard> {
     try {
       final res = await http.put(url, body: jsonEncode(true));
       if (res.statusCode == 200) {
-        setState(() {
-          isRequested = true;
-        });
-        debugPrint("Join request sent for $groupId by $userId");
+        setState(() => isRequested = true);
+        debugPrint("📩 Join request sent for $groupId by $userId");
       } else {
-        debugPrint("Failed to send request: ${res.statusCode}");
+        debugPrint("❌ Failed to send request: ${res.statusCode}");
       }
     } catch (e) {
-      debugPrint("sendJoinRequest error: $e");
+      debugPrint("❌ sendJoinRequest error: $e");
     }
   }
 
@@ -106,9 +104,13 @@ class _CompanionCardState extends State<CompanionCard> {
       final groupName = widget.data['groupName'] ?? 'Unnamed Group';
       final date = widget.data['date'] ?? 'N/A';
       final gender = widget.data['gender'] ?? 'N/A';
-      final age = widget.data['ageLimit'] ?? 'N/A';
+      final age = widget.data['ageLimit']?.toString() ?? 'N/A';
       final type = widget.data['type'] ?? 'N/A';
-      final venue = widget.data['eventVenue'] ?? 'N/A';
+
+      final meetVenue = widget.data['meetVenue'] ?? 'N/A';
+      final eventVenue = widget.data['eventVenue'] ?? 'N/A';
+      final startTime = widget.data['startTime'] ?? 'N/A';
+      final timer = widget.data['timer']?.toString() ?? 'N/A'; // Assuming timer = duration in hours
 
       return Card(
         elevation: 5,
@@ -154,27 +156,27 @@ class _CompanionCardState extends State<CompanionCard> {
                     ],
                   ),
                   const SizedBox(height: 12),
+
                   Wrap(
                     spacing: 10,
                     runSpacing: 6,
                     children: [
                       _buildInfoChip(Icons.sports, sport),
-                      _buildInfoChip(Icons.location_on, city),
+                      _buildInfoChip(Icons.location_city, city),
                       _buildInfoChip(Icons.group, gender),
                       _buildInfoChip(Icons.cake, age),
                       _buildInfoChip(Icons.attach_money, type),
                       _buildInfoChip(Icons.calendar_today, date),
+                      _buildInfoChip(Icons.schedule, "Start: $startTime"),
+                      _buildInfoChip(Icons.timer, "Duration: $timer hr"),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    "Venue: $venue",
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.black54,
-                    ),
-                  ),
+
                   const SizedBox(height: 10),
+                  Text("📍 Meet Venue: $meetVenue", style: _venueTextStyle()),
+                  Text("🎯 Event Venue: $eventVenue", style: _venueTextStyle()),
+                  const SizedBox(height: 10),
+
                   if (!isMember)
                     Align(
                       alignment: Alignment.centerRight,
@@ -192,7 +194,7 @@ class _CompanionCardState extends State<CompanionCard> {
                     const Align(
                       alignment: Alignment.centerRight,
                       child: Text(
-                        "You're a member",
+                        "✅ You're a member",
                         style: TextStyle(color: Colors.green),
                       ),
                     ),
@@ -203,7 +205,7 @@ class _CompanionCardState extends State<CompanionCard> {
         ),
       );
     } catch (e) {
-      debugPrint("Error rendering card: $e");
+      debugPrint("❌ Error rendering card: $e");
       return const Padding(
         padding: EdgeInsets.all(8.0),
         child: Text(
@@ -212,6 +214,14 @@ class _CompanionCardState extends State<CompanionCard> {
         ),
       );
     }
+  }
+
+  TextStyle _venueTextStyle() {
+    return const TextStyle(
+      fontSize: 14,
+      color: Colors.black87,
+      fontWeight: FontWeight.w500,
+    );
   }
 
   Widget _buildInfoChip(IconData icon, String text) {
