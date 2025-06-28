@@ -15,6 +15,7 @@ class ViewGroupsScreen extends StatefulWidget {
 
 class _ViewGroupsScreenState extends State<ViewGroupsScreen> {
   List<Map<String, dynamic>> userGroups = [];
+  Map<String, dynamic> userCache = {}; // Cache user profiles
 
   @override
   void initState() {
@@ -92,12 +93,23 @@ class _ViewGroupsScreenState extends State<ViewGroupsScreen> {
     );
   }
 
+  Future<Map<String, dynamic>?> fetchUserProfile(String userId) async {
+    if (userCache.containsKey(userId)) return userCache[userId];
+
+    final url = Uri.parse("https://sportface-f9594-default-rtdb.firebaseio.com/users/$userId.json");
+    final res = await http.get(url);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+      userCache[userId] = data;
+      return data;
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("My Groups"),
-      ),
+      appBar: AppBar(title: const Text("My Groups")),
       body: userGroups.isEmpty
           ? const Center(child: Text("No groups created yet"))
           : ListView.builder(
@@ -144,22 +156,33 @@ class _ViewGroupsScreenState extends State<ViewGroupsScreen> {
                           const SizedBox(height: 6),
                           Column(
                             children: requests.keys.map((userId) {
-                              return ListTile(
-                                leading: CircularAvatar(userId: userId, imageUrl: ''),
-                                title: Text("User ID: $userId"),
-                                trailing: Wrap(
-                                  spacing: 10,
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.check, color: Colors.green),
-                                      onPressed: () => updateGroupRequest(groupId, userId, true),
+                              return FutureBuilder(
+                                future: fetchUserProfile(userId),
+                                builder: (context, snapshot) {
+                                  final user = snapshot.data as Map<String, dynamic>?;
+
+                                  return ListTile(
+                                    leading: CircularAvatar(
+                                      userId: userId,
+                                      imageUrl: user?['imageUrl'] ?? '',
                                     ),
-                                    IconButton(
-                                      icon: const Icon(Icons.close, color: Colors.red),
-                                      onPressed: () => updateGroupRequest(groupId, userId, false),
+                                    title: Text(user?['name'] ?? 'User ID: $userId'),
+                                    subtitle: Text(user?['email'] ?? ''),
+                                    trailing: Wrap(
+                                      spacing: 10,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(Icons.check, color: Colors.green),
+                                          onPressed: () => updateGroupRequest(groupId, userId, true),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.close, color: Colors.red),
+                                          onPressed: () => updateGroupRequest(groupId, userId, false),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
+                                  );
+                                },
                               );
                             }).toList(),
                           ),
@@ -171,7 +194,18 @@ class _ViewGroupsScreenState extends State<ViewGroupsScreen> {
                         const SizedBox(height: 8),
                         Wrap(
                           spacing: 8,
-                          children: members.map((uid) => CircularAvatar(userId: uid, imageUrl: '')).toList(),
+                          children: members.map((uid) {
+                            return FutureBuilder(
+                              future: fetchUserProfile(uid),
+                              builder: (context, snapshot) {
+                                final user = snapshot.data as Map<String, dynamic>?;
+                                return CircularAvatar(
+                                  userId: uid,
+                                  imageUrl: user?['imageUrl'] ?? '',
+                                );
+                              },
+                            );
+                          }).toList(),
                         ),
 
                         const SizedBox(height: 12),
