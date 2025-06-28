@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+
 import '../widgets/circular_avatar.dart';
 import '../providers/user_provider.dart';
 
@@ -17,27 +20,47 @@ class CompanionCard extends StatefulWidget {
 class _CompanionCardState extends State<CompanionCard> {
   bool isRequested = false;
   bool isMember = false;
-  String errorLog = '';
+  Timer? countdownTimer;
+  Duration? remainingTime;
+  bool isExpired = false;
 
   @override
   void initState() {
     super.initState();
+    checkGroupStatus();
+    startCountdown();
+  }
+
+  @override
+  void dispose() {
+    countdownTimer?.cancel();
+    super.dispose();
+  }
+
+  void startCountdown() {
     try {
-      debugPrint("🟢 INIT CompanionCard for: ${widget.data['groupName']}");
-      checkGroupStatus();
+      final end = DateTime.tryParse(widget.data['endTime'] ?? '');
+      if (end == null) return;
+
+      countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        final now = DateTime.now();
+        final diff = end.difference(now);
+        if (diff.isNegative) {
+          timer.cancel();
+          if (mounted) setState(() => isExpired = true);
+        } else {
+          if (mounted) setState(() => remainingTime = diff);
+        }
+      });
     } catch (e) {
-      debugPrint("❌ Init error: $e");
-      errorLog = "Init error: $e";
+      debugPrint("❌ Countdown error: $e");
     }
   }
 
   Future<void> checkGroupStatus() async {
     final userId = Provider.of<UserProvider>(context, listen: false).user?.id;
     final groupId = widget.data['groupId'];
-    if (userId == null || groupId == null) {
-      debugPrint("⚠️ Skipped group status check: userId/groupId missing");
-      return;
-    }
+    if (userId == null || groupId == null) return;
 
     final groupUrl =
         'https://sportface-f9594-default-rtdb.firebaseio.com/groups/$groupId.json';
@@ -53,12 +76,9 @@ class _CompanionCardState extends State<CompanionCard> {
           isMember = members.contains(userId);
           isRequested = requests.containsKey(userId);
         });
-        debugPrint("✅ GroupStatus: isMember=$isMember, isRequested=$isRequested");
-      } else {
-        debugPrint("❌ Failed to fetch group $groupId: ${res.statusCode}");
       }
     } catch (e) {
-      debugPrint("❌ checkGroupStatus error: $e");
+      debugPrint("❌ Group status check failed: $e");
     }
   }
 
@@ -74,146 +94,150 @@ class _CompanionCardState extends State<CompanionCard> {
       final res = await http.put(url, body: jsonEncode(true));
       if (res.statusCode == 200) {
         setState(() => isRequested = true);
-        debugPrint("📩 Join request sent for $groupId by $userId");
-      } else {
-        debugPrint("❌ Failed to send request: ${res.statusCode}");
       }
     } catch (e) {
-      debugPrint("❌ sendJoinRequest error: $e");
+      debugPrint("❌ Failed to send request: $e");
     }
   }
 
+  String formatDuration(Duration? d) {
+    if (d == null) return '--';
+    final h = d.inHours;
+    final m = d.inMinutes.remainder(60);
+    final s = d.inSeconds.remainder(60);
+    return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
+
   String getSportImage(String sport) {
-    final lowerSport = sport.toLowerCase();
-    final sportMap = {
+    final lower = sport.toLowerCase();
+    return {
       'cricket': 'assets/images/cricket.jpg',
       'football': 'assets/images/football.jpg',
       'badminton': 'assets/images/badminton.jpg',
       'tennis': 'assets/images/tennis.png',
       'basketball': 'assets/images/basketball.png',
-    };
-    return sportMap[lowerSport] ?? 'assets/images/default_sport.png';
+    }[lower] ?? 'assets/images/default_sport.png';
   }
 
   @override
   Widget build(BuildContext context) {
+    if (isExpired) return const SizedBox.shrink();
+
+    final organiserId = widget.data['createdBy'] ?? '';
+    final sport = widget.data['sport'] ?? 'Unknown';
+    final city = widget.data['city'] ?? 'Unknown City';
+    final groupName = widget.data['groupName'] ?? 'Unnamed Group';
+    final date = widget.data['date'] ?? 'N/A';
+    final gender = widget.data['gender'] ?? 'N/A';
+    final age = widget.data['ageLimit']?.toString() ?? 'N/A';
+    final type = widget.data['type'] ?? 'N/A';
+    final meetVenue = widget.data['meetVenue'] ?? 'N/A';
+    final eventVenue = widget.data['eventVenue'] ?? 'N/A';
+    final startTime = widget.data['startTime'] ?? 'N/A';
+
+    // Parse duration
+    Duration? duration;
     try {
-      final organiserId = widget.data['createdBy'] ?? '';
-      final sport = widget.data['sport'] ?? 'Unknown';
-      final city = widget.data['city'] ?? 'Unknown City';
-      final groupName = widget.data['groupName'] ?? 'Unnamed Group';
-      final date = widget.data['date'] ?? 'N/A';
-      final gender = widget.data['gender'] ?? 'N/A';
-      final age = widget.data['ageLimit']?.toString() ?? 'N/A';
-      final type = widget.data['type'] ?? 'N/A';
+      final timestamp = DateTime.tryParse(widget.data['timestamp'] ?? '');
+      final end = DateTime.tryParse(widget.data['endTime'] ?? '');
+      if (timestamp != null && end != null) {
+        duration = end.difference(timestamp);
+      }
+    } catch (_) {}
 
-      final meetVenue = widget.data['meetVenue'] ?? 'N/A';
-      final eventVenue = widget.data['eventVenue'] ?? 'N/A';
-      final startTime = widget.data['startTime'] ?? 'N/A';
-      final timer = widget.data['timer']?.toString() ?? 'N/A'; // Assuming timer = duration in hours
+    return Card(
+      elevation: 5,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      margin: const EdgeInsets.symmetric(vertical: 10),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Stack(
+          children: [
+            // Avatar top right
+            Positioned(
+              top: 0,
+              right: 0,
+              child: CircularAvatar(imageUrl: '', userId: organiserId),
+            ),
 
-      return Card(
-        elevation: 5,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        margin: const EdgeInsets.symmetric(vertical: 10),
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Stack(
-            children: [
-              // Avatar top right
-              Positioned(
-                top: 0,
-                right: 0,
-                child: CircularAvatar(imageUrl: '', userId: organiserId),
-              ),
-
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Sport image top left
-                  Row(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.asset(
-                          getSportImage(sport),
-                          width: 60,
-                          height: 60,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          groupName,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 6,
-                    children: [
-                      _buildInfoChip(Icons.sports, sport),
-                      _buildInfoChip(Icons.location_city, city),
-                      _buildInfoChip(Icons.group, gender),
-                      _buildInfoChip(Icons.cake, age),
-                      _buildInfoChip(Icons.attach_money, type),
-                      _buildInfoChip(Icons.calendar_today, date),
-                      _buildInfoChip(Icons.schedule, "Start: $startTime"),
-                      _buildInfoChip(Icons.timer, "Duration: $timer hr"),
-                    ],
-                  ),
-
-                  const SizedBox(height: 10),
-                  Text("📍 Meet Venue: $meetVenue", style: _venueTextStyle()),
-                  Text("🎯 Event Venue: $eventVenue", style: _venueTextStyle()),
-                  const SizedBox(height: 10),
-
-                  if (!isMember)
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: ElevatedButton.icon(
-                        onPressed: isRequested ? null : sendJoinRequest,
-                        icon: const Icon(Icons.send),
-                        label: Text(isRequested ? "Requested" : "Request"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueAccent,
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                    )
-                  else
-                    const Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        "✅ You're a member",
-                        style: TextStyle(color: Colors.green),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Sport image top left
+                Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.asset(
+                        getSportImage(sport),
+                        width: 60,
+                        height: 60,
+                        fit: BoxFit.cover,
                       ),
                     ),
-                ],
-              ),
-            ],
-          ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        groupName,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 6,
+                  children: [
+                    _buildInfoChip(Icons.sports, sport),
+                    _buildInfoChip(Icons.location_city, city),
+                    _buildInfoChip(Icons.group, gender),
+                    _buildInfoChip(Icons.cake, age),
+                    _buildInfoChip(Icons.attach_money, type),
+                    _buildInfoChip(Icons.calendar_today, date),
+                    _buildInfoChip(Icons.schedule, "Start: $startTime"),
+                    _buildInfoChip(Icons.timelapse, "Duration: ${duration?.inHours ?? '?'} hr"),
+                    _buildInfoChip(Icons.timer, "⏱ ${formatDuration(remainingTime)} left"),
+                  ],
+                ),
+
+                const SizedBox(height: 10),
+                Text("📍 Meet Venue: $meetVenue", style: _venueTextStyle()),
+                Text("🎯 Event Venue: $eventVenue", style: _venueTextStyle()),
+                const SizedBox(height: 10),
+
+                if (!isMember)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: ElevatedButton.icon(
+                      onPressed: isRequested ? null : sendJoinRequest,
+                      icon: const Icon(Icons.send),
+                      label: Text(isRequested ? "Requested" : "Request"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blueAccent,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  )
+                else
+                  const Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      "✅ You're a member",
+                      style: TextStyle(color: Colors.green),
+                    ),
+                  ),
+              ],
+            ),
+          ],
         ),
-      );
-    } catch (e) {
-      debugPrint("❌ Error rendering card: $e");
-      return const Padding(
-        padding: EdgeInsets.all(8.0),
-        child: Text(
-          "⚠️ Error rendering companion card",
-          style: TextStyle(color: Colors.red),
-        ),
-      );
-    }
+      ),
+    );
   }
 
   TextStyle _venueTextStyle() {
