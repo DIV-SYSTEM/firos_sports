@@ -1,12 +1,63 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import '../widgets/circular_avatar.dart';
 import '../providers/user_provider.dart';
 
-class CompanionCard extends StatelessWidget {
+class CompanionCard extends StatefulWidget {
   final Map<String, dynamic> data;
 
   const CompanionCard({super.key, required this.data});
+
+  @override
+  State<CompanionCard> createState() => _CompanionCardState();
+}
+
+class _CompanionCardState extends State<CompanionCard> {
+  bool isRequested = false;
+  bool isMember = false;
+
+  @override
+  void initState() {
+    super.initState();
+    checkGroupStatus();
+  }
+
+  Future<void> checkGroupStatus() async {
+    final userId = Provider.of<UserProvider>(context, listen: false).user?.id;
+    final groupId = widget.data['groupId'];
+    if (userId == null || groupId == null) return;
+
+    final groupUrl = 'https://sportface-f9594-default-rtdb.firebaseio.com/groups/$groupId.json';
+
+    final res = await http.get(Uri.parse(groupUrl));
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+      final List members = data['members'] ?? [];
+      final Map requests = data['requests'] ?? {};
+
+      setState(() {
+        isMember = members.contains(userId);
+        isRequested = requests.containsKey(userId);
+      });
+    }
+  }
+
+  Future<void> sendJoinRequest() async {
+    final userId = Provider.of<UserProvider>(context, listen: false).user?.id;
+    final groupId = widget.data['groupId'];
+    if (userId == null || groupId == null) return;
+
+    final url = Uri.parse('https://sportface-f9594-default-rtdb.firebaseio.com/groups/$groupId/requests/$userId.json');
+
+    final res = await http.put(url, body: jsonEncode(true));
+    if (res.statusCode == 200) {
+      setState(() {
+        isRequested = true;
+      });
+    }
+  }
 
   String getSportImage(String sport) {
     final lowerSport = sport.toLowerCase();
@@ -22,16 +73,15 @@ class CompanionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentUserId = Provider.of<UserProvider>(context).user?.id;
-    final organiserId = data['createdBy'] ?? '';
-    final sport = data['sport'] ?? 'Unknown';
-    final city = data['city'] ?? 'Unknown City';
-    final groupName = data['groupName'] ?? 'Unnamed Group';
-    final date = data['date'] ?? 'N/A';
-    final gender = data['gender'] ?? 'N/A';
-    final age = data['ageLimit'] ?? 'N/A';
-    final type = data['type'] ?? 'N/A';
-    final venue = data['eventVenue'] ?? 'N/A';
+    final organiserId = widget.data['createdBy'] ?? '';
+    final sport = widget.data['sport'] ?? 'Unknown';
+    final city = widget.data['city'] ?? 'Unknown City';
+    final groupName = widget.data['groupName'] ?? 'Unnamed Group';
+    final date = widget.data['date'] ?? 'N/A';
+    final gender = widget.data['gender'] ?? 'N/A';
+    final age = widget.data['ageLimit'] ?? 'N/A';
+    final type = widget.data['type'] ?? 'N/A';
+    final venue = widget.data['eventVenue'] ?? 'N/A';
 
     return Card(
       elevation: 5,
@@ -98,21 +148,27 @@ class CompanionCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      // TODO: Implement request logic
-                      debugPrint('Request sent by $currentUserId to $organiserId');
-                    },
-                    icon: const Icon(Icons.send),
-                    label: const Text("Request"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueAccent,
-                      foregroundColor: Colors.white,
+                if (!isMember)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: ElevatedButton.icon(
+                      onPressed: isRequested ? null : sendJoinRequest,
+                      icon: const Icon(Icons.send),
+                      label: Text(isRequested ? "Requested" : "Request"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blueAccent,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  )
+                else
+                  const Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      "You're a member",
+                      style: TextStyle(color: Colors.green),
                     ),
                   ),
-                )
               ],
             ),
           ],
