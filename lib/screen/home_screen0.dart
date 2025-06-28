@@ -38,23 +38,19 @@ class _SportMainScreenState extends State<SportMainScreen> {
     print(msg);
     setState(() {
       debugLogs.add("[${DateFormat.Hms().format(DateTime.now())}] $msg");
-      if (debugLogs.length > 100) {
-        debugLogs.removeAt(0);
-      }
+      if (debugLogs.length > 100) debugLogs.removeAt(0);
     });
   }
 
   @override
   void initState() {
     super.initState();
-    log("INIT: SportMainScreen started");
+    log("INIT: SportMainScreen Started");
     WidgetsBinding.instance.addPostFrameCallback((_) => fetchData());
   }
 
   Future<void> fetchData() async {
-    setState(() {
-      isLoading = true;
-    });
+    setState(() => isLoading = true);
     log("Fetching data from Firebase...");
 
     try {
@@ -83,9 +79,7 @@ class _SportMainScreenState extends State<SportMainScreen> {
     } catch (e) {
       log("Exception during fetch: $e");
     } finally {
-      setState(() {
-        isLoading = false;
-      });
+      setState(() => isLoading = false);
       log("Fetch complete");
     }
   }
@@ -95,12 +89,12 @@ class _SportMainScreenState extends State<SportMainScreen> {
 
     if (!isDistanceActive && _cityController.text.trim().isNotEmpty) {
       results = results.where((item) =>
-          (item['city'] ?? '').toString().toLowerCase().contains(_cityController.text.trim().toLowerCase())).toList();
+        (item['city'] ?? '').toString().toLowerCase().contains(_cityController.text.trim().toLowerCase())).toList();
     }
 
     if (_sportController.text.trim().isNotEmpty) {
       results = results.where((item) =>
-          (item['sport'] ?? '').toString().toLowerCase().contains(_sportController.text.trim().toLowerCase())).toList();
+        (item['sport'] ?? '').toString().toLowerCase().contains(_sportController.text.trim().toLowerCase())).toList();
     }
 
     if (gender != 'All') {
@@ -117,8 +111,8 @@ class _SportMainScreenState extends State<SportMainScreen> {
 
     if (selectedDate != null) {
       results = results.where((item) =>
-          item['date'] != null &&
-          item['date'] == DateFormat('yyyy-MM-dd').format(selectedDate!)).toList();
+        item['date'] != null &&
+        item['date'] == DateFormat('yyyy-MM-dd').format(selectedDate!)).toList();
     }
 
     log("Filters applied: ${results.length} items");
@@ -138,16 +132,14 @@ class _SportMainScreenState extends State<SportMainScreen> {
     distance = 0;
     isDistanceActive = false;
 
-    setState(() {
-      filteredData = allData;
-    });
+    setState(() => filteredData = allData);
   }
 
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<UserProvider>(context).user;
     if (user == null) {
-      log("UserProvider returned null user");
+      log("⚠️ UserProvider returned null user");
     }
 
     return Scaffold(
@@ -157,10 +149,7 @@ class _SportMainScreenState extends State<SportMainScreen> {
       ),
       body: Column(
         children: [
-          if (isLoading)
-            const LinearProgressIndicator()
-          else
-            const SizedBox.shrink(),
+          if (isLoading) const LinearProgressIndicator(),
           Padding(
             padding: const EdgeInsets.all(10),
             child: Row(
@@ -204,7 +193,9 @@ class _SportMainScreenState extends State<SportMainScreen> {
                 const SizedBox(height: 8),
                 DropdownButtonFormField(
                   value: gender,
-                  items: ['All', 'Male', 'Female'].map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
+                  items: ['All', 'Male', 'Female']
+                      .map((val) => DropdownMenuItem(value: val, child: Text(val)))
+                      .toList(),
                   onChanged: (val) => setState(() => gender = val!),
                   decoration: const InputDecoration(labelText: 'Gender'),
                 ),
@@ -218,7 +209,9 @@ class _SportMainScreenState extends State<SportMainScreen> {
                 ),
                 DropdownButtonFormField(
                   value: type,
-                  items: ['All', 'Paid', 'Unpaid'].map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
+                  items: ['All', 'Paid', 'Unpaid']
+                      .map((val) => DropdownMenuItem(value: val, child: Text(val)))
+                      .toList(),
                   onChanged: (val) => setState(() => type = val!),
                   decoration: const InputDecoration(labelText: 'Type'),
                 ),
@@ -234,9 +227,7 @@ class _SportMainScreenState extends State<SportMainScreen> {
                       firstDate: DateTime.now(),
                       lastDate: DateTime(2100),
                     );
-                    if (picked != null) {
-                      setState(() => selectedDate = picked);
-                    }
+                    if (picked != null) setState(() => selectedDate = picked);
                   },
                 ),
                 Text("Distance: ${distance.toInt()} km"),
@@ -277,10 +268,13 @@ class _SportMainScreenState extends State<SportMainScreen> {
                 else
                   ...filteredData.map((item) {
                     try {
-                      return CompanionCard(data: item);
+                      return CompanionCard(data: Map<String, dynamic>.from(item));
                     } catch (e) {
                       log("Error rendering item: $e");
-                      return const Text("⚠️ Error rendering item");
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: Text("⚠️ Error rendering item"),
+                      );
                     }
                   }).toList(),
                 const SizedBox(height: 40),
@@ -308,7 +302,8 @@ class _SportMainScreenState extends State<SportMainScreen> {
                       padding: const EdgeInsets.all(8),
                       children: debugLogs
                           .reversed
-                          .map((line) => Text(line, style: const TextStyle(color: Colors.white, fontSize: 11)))
+                          .map((line) =>
+                              Text(line, style: const TextStyle(color: Colors.white, fontSize: 11)))
                           .toList(),
                     ),
                   ),
