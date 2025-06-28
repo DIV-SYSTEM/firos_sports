@@ -5,8 +5,10 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../widgets/companion_card.dart';
+import '../widgets/circular_avatar.dart';
 import 'create_requirement_form.dart';
 import 'view_groups_screen.dart';
+import 'profile_screen.dart';
 import '../providers/user_provider.dart';
 
 class SportMainScreen extends StatefulWidget {
@@ -155,14 +157,24 @@ class _SportMainScreenState extends State<SportMainScreen> {
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<UserProvider>(context).user;
-    if (user == null) {
-      log("⚠️ UserProvider returned null user");
-    }
 
     return Scaffold(
       appBar: AppBar(
         title: const Text("Find Sport Companions"),
         backgroundColor: Colors.blueAccent,
+        actions: [
+          if (user != null)
+            GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: CircularAvatar(imageUrl: user.imageUrl, userId: user.id),
+              ),
+            ),
+        ],
       ),
       body: Column(
         children: [
