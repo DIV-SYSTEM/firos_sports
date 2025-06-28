@@ -88,7 +88,7 @@ class _CompanionCardState extends State<CompanionCard> {
   String getSportImage(String sport) {
     final lowerSport = sport.toLowerCase();
     final sportMap = {
-      'cricket': 'assets/images/cricket.png',
+      'cricket': 'assets/images/cricket.jpg',
       'football': 'assets/images/football.png',
       'badminton': 'assets/images/badminton.png',
       'tennis': 'assets/images/tennis.png',
