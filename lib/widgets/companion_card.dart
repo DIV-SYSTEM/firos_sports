@@ -89,8 +89,8 @@ class _CompanionCardState extends State<CompanionCard> {
     final lowerSport = sport.toLowerCase();
     final sportMap = {
       'cricket': 'assets/images/cricket.jpg',
-      'football': 'assets/images/football.png',
-      'badminton': 'assets/images/badminton.png',
+      'football': 'assets/images/football.jpg',
+      'badminton': 'assets/images/badminton.jpg',
       'tennis': 'assets/images/tennis.png',
       'basketball': 'assets/images/basketball.png',
     };
