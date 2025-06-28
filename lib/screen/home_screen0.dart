@@ -66,16 +66,20 @@ class _SportMainScreenState extends State<SportMainScreen> {
           final now = DateTime.now();
 
           final items = decoded.entries.map((e) {
-            final data = {...?e.value};
-            final timestamp = DateTime.tryParse(data['timestamp'] ?? '') ?? now;
-            final timer = data['timer'] ?? 0;
+            final value = e.value as Map<String, dynamic>? ?? {};
+            final timestamp = DateTime.tryParse(value['timestamp'] ?? '') ?? now;
+            final timer = value['timer'] ?? 0;
             final endTime = timestamp.add(Duration(hours: timer));
             if (endTime.isAfter(now)) {
-              return {'id': e.key, ...data, 'endTime': endTime.toIso8601String()};
+              return {
+                'id': e.key,
+                ...value,
+                'endTime': endTime.toIso8601String(),
+              };
             } else {
               return null;
             }
-          }).where((e) => e != null).toList();
+          }).where((e) => e != null).cast<Map<String, dynamic>>().toList();
 
           log("Parsed ${items.length} items");
 
@@ -102,12 +106,12 @@ class _SportMainScreenState extends State<SportMainScreen> {
 
     if (!isDistanceActive && _cityController.text.trim().isNotEmpty) {
       results = results.where((item) =>
-        (item['city'] ?? '').toString().toLowerCase().contains(_cityController.text.trim().toLowerCase())).toList();
+          (item['city'] ?? '').toString().toLowerCase().contains(_cityController.text.trim().toLowerCase())).toList();
     }
 
     if (_sportController.text.trim().isNotEmpty) {
       results = results.where((item) =>
-        (item['sport'] ?? '').toString().toLowerCase().contains(_sportController.text.trim().toLowerCase())).toList();
+          (item['sport'] ?? '').toString().toLowerCase().contains(_sportController.text.trim().toLowerCase())).toList();
     }
 
     if (gender != 'All') {
@@ -124,8 +128,8 @@ class _SportMainScreenState extends State<SportMainScreen> {
 
     if (selectedDate != null) {
       results = results.where((item) =>
-        item['date'] != null &&
-        item['date'] == DateFormat('yyyy-MM-dd').format(selectedDate!)).toList();
+          item['date'] != null &&
+          item['date'] == DateFormat('yyyy-MM-dd').format(selectedDate!)).toList();
     }
 
     log("Filters applied: ${results.length} items");
@@ -170,7 +174,10 @@ class _SportMainScreenState extends State<SportMainScreen> {
               children: [
                 ElevatedButton.icon(
                   onPressed: () async {
-                    await Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateRequirementScreen()));
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const CreateRequirementScreen()),
+                    );
                     await fetchData();
                   },
                   icon: const Icon(Icons.add),
@@ -178,7 +185,10 @@ class _SportMainScreenState extends State<SportMainScreen> {
                 ),
                 ElevatedButton.icon(
                   onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const ViewGroupsScreen()));
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ViewGroupsScreen()),
+                    );
                   },
                   icon: const Icon(Icons.group),
                   label: const Text("Groups"),
@@ -315,8 +325,7 @@ class _SportMainScreenState extends State<SportMainScreen> {
                       padding: const EdgeInsets.all(8),
                       children: debugLogs
                           .reversed
-                          .map((line) =>
-                              Text(line, style: const TextStyle(color: Colors.white, fontSize: 11)))
+                          .map((line) => Text(line, style: const TextStyle(color: Colors.white, fontSize: 11)))
                           .toList(),
                     ),
                   ),
