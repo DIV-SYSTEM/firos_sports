@@ -63,7 +63,20 @@ class _SportMainScreenState extends State<SportMainScreen> {
         log("Decoded JSON: ${decoded.runtimeType}");
 
         if (decoded != null && decoded is Map<String, dynamic>) {
-          final items = decoded.entries.map((e) => {'id': e.key, ...?e.value}).toList();
+          final now = DateTime.now();
+
+          final items = decoded.entries.map((e) {
+            final data = {...?e.value};
+            final timestamp = DateTime.tryParse(data['timestamp'] ?? '') ?? now;
+            final timer = data['timer'] ?? 0;
+            final endTime = timestamp.add(Duration(hours: timer));
+            if (endTime.isAfter(now)) {
+              return {'id': e.key, ...data, 'endTime': endTime.toIso8601String()};
+            } else {
+              return null;
+            }
+          }).where((e) => e != null).toList();
+
           log("Parsed ${items.length} items");
 
           setState(() {
