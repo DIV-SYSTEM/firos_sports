@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../widgets/circular_avatar.dart';
 import '../providers/user_provider.dart';
+import '../screen/profile_screen1.dart'; // 👈 New popup screen
 
 class CompanionCard extends StatefulWidget {
   final Map<String, dynamic> data;
@@ -100,6 +101,55 @@ class _CompanionCardState extends State<CompanionCard> {
     }
   }
 
+  Future<void> showOrganiserProfile(BuildContext context, String organiserId) async {
+    try {
+      debugPrint("📥 Fetching organiser: $organiserId");
+      final url = Uri.parse('https://sportface-f9594-default-rtdb.firebaseio.com/users/$organiserId.json');
+      final res = await http.get(url);
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        debugPrint("✅ Organiser data: $data");
+
+        if (data != null) {
+          showDialog(
+            context: context,
+            builder: (_) => ProfileScreenLite(
+              name: data['name'] ?? 'N/A',
+              email: data['email'] ?? 'N/A',
+              age: data['age']?.toString() ?? 'N/A',
+              imageUrl: data['imageUrl'],
+            ),
+          );
+        } else {
+          debugPrint("⚠️ No organiser data found");
+          _showErrorDialog(context, "User not found.");
+        }
+      } else {
+        debugPrint("❌ HTTP error ${res.statusCode}");
+        _showErrorDialog(context, "Failed to fetch user.");
+      }
+    } catch (e) {
+      debugPrint("❌ Exception in organiser fetch: $e");
+      _showErrorDialog(context, "Something went wrong.");
+    }
+  }
+
+  void _showErrorDialog(BuildContext context, String msg) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Error"),
+        content: Text(msg),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text("OK"),
+          )
+        ],
+      ),
+    );
+  }
+
   String formatDuration(Duration? d) {
     if (d == null) return '--';
     final h = d.inHours;
@@ -135,7 +185,6 @@ class _CompanionCardState extends State<CompanionCard> {
     final eventVenue = widget.data['eventVenue'] ?? 'N/A';
     final startTime = widget.data['startTime'] ?? 'N/A';
 
-    // Parse duration
     Duration? duration;
     try {
       final timestamp = DateTime.tryParse(widget.data['timestamp'] ?? '');
@@ -153,17 +202,18 @@ class _CompanionCardState extends State<CompanionCard> {
         padding: const EdgeInsets.all(12.0),
         child: Stack(
           children: [
-            // Avatar top right
+            // 👤 Organiser avatar
             Positioned(
               top: 0,
               right: 0,
-              child: CircularAvatar(imageUrl: '', userId: organiserId),
+              child: GestureDetector(
+                onTap: () => showOrganiserProfile(context, organiserId),
+                child: CircularAvatar(imageUrl: '', userId: organiserId),
+              ),
             ),
-
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Sport image top left
                 Row(
                   children: [
                     ClipRRect(
@@ -189,7 +239,6 @@ class _CompanionCardState extends State<CompanionCard> {
                   ],
                 ),
                 const SizedBox(height: 12),
-
                 Wrap(
                   spacing: 10,
                   runSpacing: 6,
@@ -205,12 +254,10 @@ class _CompanionCardState extends State<CompanionCard> {
                     _buildInfoChip(Icons.timer, "⏱ ${formatDuration(remainingTime)} left"),
                   ],
                 ),
-
                 const SizedBox(height: 10),
                 Text("📍 Meet Venue: $meetVenue", style: _venueTextStyle()),
                 Text("🎯 Event Venue: $eventVenue", style: _venueTextStyle()),
                 const SizedBox(height: 10),
-
                 if (!isMember)
                   Align(
                     alignment: Alignment.centerRight,
