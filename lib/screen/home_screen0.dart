@@ -174,7 +174,7 @@ class _SportMainScreenState extends State<SportMainScreen> {
                         onPressed: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => ViewGroupsScreen(currentUser: user?.id ?? '')),
+                            MaterialPageRoute(builder: (_) => ViewGroupsScreen()),
                           );
                         },
                         icon: const Icon(Icons.group),
