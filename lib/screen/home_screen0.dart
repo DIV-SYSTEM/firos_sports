@@ -1,4 +1,3 @@
-// ... (all your imports)
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -33,14 +32,14 @@ class _SportMainScreenState extends State<SportMainScreen> {
 
   bool isDistanceActive = false;
   bool isLoading = true;
-  bool showLogs = false;
+  bool showLogs = true;
 
   void log(String msg) {
     print(msg);
     setState(() {
       debugLogs.add("[${DateFormat.Hms().format(DateTime.now())}] $msg");
       if (debugLogs.length > 100) {
-        debugLogs.removeAt(0); // avoid memory bloat
+        debugLogs.removeAt(0);
       }
     });
   }
@@ -49,54 +48,45 @@ class _SportMainScreenState extends State<SportMainScreen> {
   void initState() {
     super.initState();
     log("INIT: SportMainScreen started");
-    fetchData();
+    WidgetsBinding.instance.addPostFrameCallback((_) => fetchData());
   }
 
   Future<void> fetchData() async {
     setState(() {
       isLoading = true;
     });
-    log("FETCHING DATA from Firebase...");
+    log("Fetching data from Firebase...");
 
     try {
       final url = Uri.parse('https://sportface-f9594-default-rtdb.firebaseio.com/requirements.json');
       final response = await http.get(url);
-      log("HTTP Status: ${response.statusCode}");
+      log("HTTP status code: ${response.statusCode}");
 
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
-        log("Decoded JSON: $decoded");
+        log("Decoded JSON: ${decoded.runtimeType}");
 
         if (decoded != null && decoded is Map<String, dynamic>) {
-          final items = decoded.entries.map((e) => {'id': e.key, ...e.value}).toList();
-          log("Parsed ${items.length} requirement items");
+          final items = decoded.entries.map((e) => {'id': e.key, ...?e.value}).toList();
+          log("Parsed ${items.length} items");
 
           setState(() {
             allData = items;
             filteredData = items;
           });
         } else {
-          log("Firebase response empty or not a Map.");
-          setState(() {
-            allData = [];
-            filteredData = [];
-          });
+          log("Empty or malformed response");
         }
       } else {
-        throw Exception('Failed to fetch: ${response.statusCode}');
+        log("Non-200 response: ${response.statusCode}");
       }
     } catch (e) {
-      log("Error fetching data: $e");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to fetch requirements: $e")));
-      setState(() {
-        allData = [];
-        filteredData = [];
-      });
+      log("Exception during fetch: $e");
     } finally {
       setState(() {
         isLoading = false;
       });
-      log("FETCH DONE: isLoading = false");
+      log("Fetch complete");
     }
   }
 
@@ -105,14 +95,12 @@ class _SportMainScreenState extends State<SportMainScreen> {
 
     if (!isDistanceActive && _cityController.text.trim().isNotEmpty) {
       results = results.where((item) =>
-          item['city'] != null &&
-          item['city'].toString().toLowerCase().contains(_cityController.text.trim().toLowerCase())).toList();
+          (item['city'] ?? '').toString().toLowerCase().contains(_cityController.text.trim().toLowerCase())).toList();
     }
 
     if (_sportController.text.trim().isNotEmpty) {
       results = results.where((item) =>
-          item['sport'] != null &&
-          item['sport'].toString().toLowerCase().contains(_sportController.text.trim().toLowerCase())).toList();
+          (item['sport'] ?? '').toString().toLowerCase().contains(_sportController.text.trim().toLowerCase())).toList();
     }
 
     if (gender != 'All') {
@@ -133,7 +121,7 @@ class _SportMainScreenState extends State<SportMainScreen> {
           item['date'] == DateFormat('yyyy-MM-dd').format(selectedDate!)).toList();
     }
 
-    log("FILTERS APPLIED: ${results.length} items after filtering");
+    log("Filters applied: ${results.length} items");
 
     setState(() {
       filteredData = results;
@@ -158,177 +146,177 @@ class _SportMainScreenState extends State<SportMainScreen> {
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<UserProvider>(context).user;
-    log("BUILD: SportMainScreen UI rendering...");
+    if (user == null) {
+      log("UserProvider returned null user");
+    }
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Find Sport Companions")),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
+      appBar: AppBar(
+        title: const Text("Find Sport Companions"),
+        backgroundColor: Colors.blueAccent,
+      ),
+      body: Column(
+        children: [
+          if (isLoading)
+            const LinearProgressIndicator()
+          else
+            const SizedBox.shrink(),
+          Padding(
+            padding: const EdgeInsets.all(10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                Padding(
-                  padding: const EdgeInsets.all(10.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: () async {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const CreateRequirementScreen()),
-                          );
-                          await fetchData();
-                        },
-                        icon: const Icon(Icons.add),
-                        label: const Text("Create Requirement"),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => ViewGroupsScreen()),
-                          );
-                        },
-                        icon: const Icon(Icons.group),
-                        label: const Text("View Groups"),
-                      ),
-                    ],
-                  ),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    await Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateRequirementScreen()));
+                    await fetchData();
+                  },
+                  icon: const Icon(Icons.add),
+                  label: const Text("Create"),
                 ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 4),
-                  child: Text("Filter Companions", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const ViewGroupsScreen()));
+                  },
+                  icon: const Icon(Icons.group),
+                  label: const Text("Groups"),
                 ),
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    children: [
-                      if (!isDistanceActive)
-                        TextField(
-                          controller: _cityController,
-                          decoration: const InputDecoration(labelText: 'City'),
-                        ),
-                      TextField(
-                        controller: _sportController,
-                        decoration: const InputDecoration(labelText: 'Sport'),
-                      ),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField(
-                        value: gender,
-                        items: ['All', 'Male', 'Female']
-                            .map((val) => DropdownMenuItem(value: val, child: Text(val)))
-                            .toList(),
-                        onChanged: (val) => setState(() => gender = val!),
-                        decoration: const InputDecoration(labelText: 'Gender'),
-                      ),
-                      DropdownButtonFormField(
-                        value: age,
-                        items: ['All', '18-25', '26-33', '34-40', '40+']
-                            .map((val) => DropdownMenuItem(value: val, child: Text(val)))
-                            .toList(),
-                        onChanged: (val) => setState(() => age = val!),
-                        decoration: const InputDecoration(labelText: 'Age Limit'),
-                      ),
-                      DropdownButtonFormField(
-                        value: type,
-                        items: ['All', 'Paid', 'Unpaid']
-                            .map((val) => DropdownMenuItem(value: val, child: Text(val)))
-                            .toList(),
-                        onChanged: (val) => setState(() => type = val!),
-                        decoration: const InputDecoration(labelText: 'Type'),
-                      ),
-                      ListTile(
-                        title: Text(selectedDate != null
-                            ? "Date: ${DateFormat('yyyy-MM-dd').format(selectedDate!)}"
-                            : "Select Date"),
-                        trailing: const Icon(Icons.calendar_today),
-                        onTap: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: DateTime.now(),
-                            firstDate: DateTime.now(),
-                            lastDate: DateTime(2100),
-                          );
-                          if (picked != null) {
-                            setState(() => selectedDate = picked);
-                          }
-                        },
-                      ),
-                      Text("Distance: ${distance.toInt()} km"),
-                      Slider(
-                        value: distance,
-                        min: 0,
-                        max: 100,
-                        divisions: 100,
-                        label: "${distance.toInt()} km",
-                        onChanged: (val) {
-                          setState(() {
-                            distance = val;
-                            isDistanceActive = val > 0;
-                          });
-                        },
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          ElevatedButton.icon(
-                            onPressed: resetFilters,
-                            icon: const Icon(Icons.refresh),
-                            label: const Text("Reset Filter"),
-                          ),
-                          ElevatedButton.icon(
-                            onPressed: applyFilters,
-                            icon: const Icon(Icons.filter_alt),
-                            label: const Text("Apply Filter"),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      if (filteredData.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 20),
-                          child: Center(child: Text("No companions found")),
-                        )
-                      else
-                        ...filteredData.map((item) {
-                          log("RENDERING ITEM: ${item['groupName']} (${item['sport']})");
-                          return CompanionCard(data: item);
-                        }).toList(),
-
-                      const SizedBox(height: 40),
-                    ],
-                  ),
-                ),
-                // 🔽 Debug log panel
-                Container(
-                  color: Colors.black87,
-                  child: Column(
-                    children: [
-                      GestureDetector(
-                        onTap: () => setState(() => showLogs = !showLogs),
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Text(
-                            showLogs ? "🔽 Hide Debug Logs" : "🔼 Show Debug Logs",
-                            style: const TextStyle(color: Colors.white70),
-                          ),
-                        ),
-                      ),
-                      if (showLogs)
-                        SizedBox(
-                          height: 120,
-                          child: ListView(
-                            padding: const EdgeInsets.all(8),
-                            children: debugLogs.reversed
-                                .map((line) => Text(line, style: const TextStyle(color: Colors.white, fontSize: 11)))
-                                .toList(),
-                          ),
-                        ),
-                    ],
-                  ),
-                )
               ],
             ),
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 4),
+            child: Text("Filters", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: [
+                if (!isDistanceActive)
+                  TextField(
+                    controller: _cityController,
+                    decoration: const InputDecoration(labelText: 'City'),
+                  ),
+                TextField(
+                  controller: _sportController,
+                  decoration: const InputDecoration(labelText: 'Sport'),
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField(
+                  value: gender,
+                  items: ['All', 'Male', 'Female'].map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
+                  onChanged: (val) => setState(() => gender = val!),
+                  decoration: const InputDecoration(labelText: 'Gender'),
+                ),
+                DropdownButtonFormField(
+                  value: age,
+                  items: ['All', '18-25', '26-33', '34-40', '40+']
+                      .map((val) => DropdownMenuItem(value: val, child: Text(val)))
+                      .toList(),
+                  onChanged: (val) => setState(() => age = val!),
+                  decoration: const InputDecoration(labelText: 'Age Limit'),
+                ),
+                DropdownButtonFormField(
+                  value: type,
+                  items: ['All', 'Paid', 'Unpaid'].map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
+                  onChanged: (val) => setState(() => type = val!),
+                  decoration: const InputDecoration(labelText: 'Type'),
+                ),
+                ListTile(
+                  title: Text(selectedDate != null
+                      ? "Date: ${DateFormat('yyyy-MM-dd').format(selectedDate!)}"
+                      : "Select Date"),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now(),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) {
+                      setState(() => selectedDate = picked);
+                    }
+                  },
+                ),
+                Text("Distance: ${distance.toInt()} km"),
+                Slider(
+                  value: distance,
+                  min: 0,
+                  max: 100,
+                  divisions: 100,
+                  label: "${distance.toInt()} km",
+                  onChanged: (val) {
+                    setState(() {
+                      distance = val;
+                      isDistanceActive = val > 0;
+                    });
+                  },
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: resetFilters,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text("Reset"),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: applyFilters,
+                      icon: const Icon(Icons.filter_alt),
+                      label: const Text("Apply"),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (filteredData.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Center(child: Text("No companions found")),
+                  )
+                else
+                  ...filteredData.map((item) {
+                    try {
+                      return CompanionCard(data: item);
+                    } catch (e) {
+                      log("Error rendering item: $e");
+                      return const Text("⚠️ Error rendering item");
+                    }
+                  }).toList(),
+                const SizedBox(height: 40),
+              ],
+            ),
+          ),
+          Container(
+            color: Colors.black87,
+            child: Column(
+              children: [
+                GestureDetector(
+                  onTap: () => setState(() => showLogs = !showLogs),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Text(
+                      showLogs ? "🔽 Hide Logs" : "🔼 Show Logs",
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                  ),
+                ),
+                if (showLogs)
+                  SizedBox(
+                    height: 140,
+                    child: ListView(
+                      padding: const EdgeInsets.all(8),
+                      children: debugLogs
+                          .reversed
+                          .map((line) => Text(line, style: const TextStyle(color: Colors.white, fontSize: 11)))
+                          .toList(),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
