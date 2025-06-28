@@ -1,3 +1,4 @@
+// ... (all your imports)
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -28,14 +29,26 @@ class _SportMainScreenState extends State<SportMainScreen> {
 
   List<dynamic> allData = [];
   List<dynamic> filteredData = [];
+  List<String> debugLogs = [];
 
   bool isDistanceActive = false;
   bool isLoading = true;
+  bool showLogs = false;
+
+  void log(String msg) {
+    print(msg);
+    setState(() {
+      debugLogs.add("[${DateFormat.Hms().format(DateTime.now())}] $msg");
+      if (debugLogs.length > 100) {
+        debugLogs.removeAt(0); // avoid memory bloat
+      }
+    });
+  }
 
   @override
   void initState() {
     super.initState();
-    print("INIT: SportMainScreen started");
+    log("INIT: SportMainScreen started");
     fetchData();
   }
 
@@ -43,27 +56,27 @@ class _SportMainScreenState extends State<SportMainScreen> {
     setState(() {
       isLoading = true;
     });
-    print("FETCHING DATA from Firebase...");
+    log("FETCHING DATA from Firebase...");
 
     try {
       final url = Uri.parse('https://sportface-f9594-default-rtdb.firebaseio.com/requirements.json');
       final response = await http.get(url);
-      print("HTTP Status: ${response.statusCode}");
+      log("HTTP Status: ${response.statusCode}");
 
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
-        print("Decoded JSON: $decoded");
+        log("Decoded JSON: $decoded");
 
         if (decoded != null && decoded is Map<String, dynamic>) {
           final items = decoded.entries.map((e) => {'id': e.key, ...e.value}).toList();
-          print("Parsed ${items.length} requirement items");
+          log("Parsed ${items.length} requirement items");
 
           setState(() {
             allData = items;
             filteredData = items;
           });
         } else {
-          print("Firebase response empty or not a Map.");
+          log("Firebase response empty or not a Map.");
           setState(() {
             allData = [];
             filteredData = [];
@@ -73,7 +86,7 @@ class _SportMainScreenState extends State<SportMainScreen> {
         throw Exception('Failed to fetch: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint("Error fetching data: $e");
+      log("Error fetching data: $e");
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to fetch requirements: $e")));
       setState(() {
         allData = [];
@@ -83,7 +96,7 @@ class _SportMainScreenState extends State<SportMainScreen> {
       setState(() {
         isLoading = false;
       });
-      print("FETCH DONE: isLoading = false");
+      log("FETCH DONE: isLoading = false");
     }
   }
 
@@ -92,14 +105,14 @@ class _SportMainScreenState extends State<SportMainScreen> {
 
     if (!isDistanceActive && _cityController.text.trim().isNotEmpty) {
       results = results.where((item) =>
-        item['city'] != null &&
-        item['city'].toString().toLowerCase().contains(_cityController.text.trim().toLowerCase())).toList();
+          item['city'] != null &&
+          item['city'].toString().toLowerCase().contains(_cityController.text.trim().toLowerCase())).toList();
     }
 
     if (_sportController.text.trim().isNotEmpty) {
       results = results.where((item) =>
-        item['sport'] != null &&
-        item['sport'].toString().toLowerCase().contains(_sportController.text.trim().toLowerCase())).toList();
+          item['sport'] != null &&
+          item['sport'].toString().toLowerCase().contains(_sportController.text.trim().toLowerCase())).toList();
     }
 
     if (gender != 'All') {
@@ -116,11 +129,11 @@ class _SportMainScreenState extends State<SportMainScreen> {
 
     if (selectedDate != null) {
       results = results.where((item) =>
-        item['date'] != null &&
-        item['date'] == DateFormat('yyyy-MM-dd').format(selectedDate!)).toList();
+          item['date'] != null &&
+          item['date'] == DateFormat('yyyy-MM-dd').format(selectedDate!)).toList();
     }
 
-    print("FILTERS APPLIED: ${results.length} items after filtering");
+    log("FILTERS APPLIED: ${results.length} items after filtering");
 
     setState(() {
       filteredData = results;
@@ -144,15 +157,14 @@ class _SportMainScreenState extends State<SportMainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    print("BUILD: SportMainScreen UI rendering...");
     final user = Provider.of<UserProvider>(context).user;
+    log("BUILD: SportMainScreen UI rendering...");
 
     return Scaffold(
       appBar: AppBar(title: const Text("Find Sport Companions")),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
                   padding: const EdgeInsets.all(10.0),
@@ -272,7 +284,6 @@ class _SportMainScreenState extends State<SportMainScreen> {
                         ],
                       ),
                       const SizedBox(height: 16),
-
                       if (filteredData.isEmpty)
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 20),
@@ -280,12 +291,42 @@ class _SportMainScreenState extends State<SportMainScreen> {
                         )
                       else
                         ...filteredData.map((item) {
-                          print("RENDERING ITEM: ${item['groupName']} (${item['sport']})");
+                          log("RENDERING ITEM: ${item['groupName']} (${item['sport']})");
                           return CompanionCard(data: item);
                         }).toList(),
+
+                      const SizedBox(height: 40),
                     ],
                   ),
                 ),
+                // 🔽 Debug log panel
+                Container(
+                  color: Colors.black87,
+                  child: Column(
+                    children: [
+                      GestureDetector(
+                        onTap: () => setState(() => showLogs = !showLogs),
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(
+                            showLogs ? "🔽 Hide Debug Logs" : "🔼 Show Debug Logs",
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                        ),
+                      ),
+                      if (showLogs)
+                        SizedBox(
+                          height: 120,
+                          child: ListView(
+                            padding: const EdgeInsets.all(8),
+                            children: debugLogs.reversed
+                                .map((line) => Text(line, style: const TextStyle(color: Colors.white, fontSize: 11)))
+                                .toList(),
+                          ),
+                        ),
+                    ],
+                  ),
+                )
               ],
             ),
     );
