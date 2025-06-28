@@ -30,6 +30,7 @@ class _SportMainScreenState extends State<SportMainScreen> {
   List<dynamic> filteredData = [];
 
   bool isDistanceActive = false;
+  bool isLoading = true;
 
   @override
   void initState() {
@@ -38,16 +39,35 @@ class _SportMainScreenState extends State<SportMainScreen> {
   }
 
   Future<void> fetchData() async {
-    final url = Uri.parse('https://sportface-f9594-default-rtdb.firebaseio.com/requirements.json');
-    final response = await http.get(url);
+    setState(() {
+      isLoading = true;
+    });
 
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> data = jsonDecode(response.body);
-      final items = data.entries.map((e) => {'id': e.key, ...e.value}).toList();
+    try {
+      final url = Uri.parse('https://sportface-f9594-default-rtdb.firebaseio.com/requirements.json');
+      final response = await http.get(url);
 
+      if (response.statusCode == 200) {
+        final Map<String, dynamic>? data = jsonDecode(response.body);
+        final items = data?.entries.map((e) => {'id': e.key, ...e.value}).toList() ?? [];
+
+        setState(() {
+          allData = items;
+          filteredData = items;
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          allData = [];
+          filteredData = [];
+          isLoading = false;
+        });
+      }
+    } catch (e) {
       setState(() {
-        allData = items;
-        filteredData = items;
+        allData = [];
+        filteredData = [];
+        isLoading = false;
       });
     }
   }
@@ -107,141 +127,142 @@ class _SportMainScreenState extends State<SportMainScreen> {
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<UserProvider>(context).user;
-    final userId = user?.id;
 
     return Scaffold(
       appBar: AppBar(
-        leading: BackButton(),
+        leading: const BackButton(),
         title: const Text("Find Sport Companions"),
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Navigation buttons
-          Padding(
-            padding: const EdgeInsets.all(10.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateRequirementScreen()));
-                  },
-                  icon: const Icon(Icons.add),
-                  label: const Text("Create Requirement"),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const ViewGroupsScreen(),
+                // Top buttons
+                Padding(
+                  padding: const EdgeInsets.all(10.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const CreateRequirementScreen()),
+                          );
+                          await fetchData(); // refresh list after form
+                        },
+                        icon: const Icon(Icons.add),
+                        label: const Text("Create Requirement"),
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.group),
-                  label: const Text("View Groups"),
-                ),
-              ],
-            ),
-          ),
-
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 4),
-            child: Text("Filter Companions", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          ),
-
-          // Filters
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: [
-                if (!isDistanceActive)
-                  TextField(
-                    controller: _cityController,
-                    decoration: const InputDecoration(labelText: 'City'),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const ViewGroupsScreen()));
+                        },
+                        icon: const Icon(Icons.group),
+                        label: const Text("View Groups"),
+                      ),
+                    ],
                   ),
-                TextField(
-                  controller: _sportController,
-                  decoration: const InputDecoration(labelText: 'Sport'),
                 ),
-                const SizedBox(height: 8),
-                DropdownButtonFormField(
-                  value: gender,
-                  items: ['All', 'Male', 'Female'].map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
-                  onChanged: (val) => setState(() => gender = val!),
-                  decoration: const InputDecoration(labelText: 'Gender'),
-                ),
-                DropdownButtonFormField(
-                  value: age,
-                  items: ['All', '18-25', '26-33', '34-40', '40+'].map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
-                  onChanged: (val) => setState(() => age = val!),
-                  decoration: const InputDecoration(labelText: 'Age Limit'),
-                ),
-                DropdownButtonFormField(
-                  value: type,
-                  items: ['All', 'Paid', 'Unpaid'].map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
-                  onChanged: (val) => setState(() => type = val!),
-                  decoration: const InputDecoration(labelText: 'Type'),
-                ),
-                ListTile(
-                  title: Text(selectedDate != null
-                      ? "Date: ${DateFormat('yyyy-MM-dd').format(selectedDate!)}"
-                      : "Select Date"),
-                  trailing: const Icon(Icons.calendar_today),
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime.now(),
-                      firstDate: DateTime.now(),
-                      lastDate: DateTime(2100),
-                    );
-                    if (picked != null) {
-                      setState(() {
-                        selectedDate = picked;
-                      });
-                    }
-                  },
-                ),
-                const SizedBox(height: 4),
-                Text("Distance: ${distance.toInt()} km"),
-                Slider(
-                  value: distance,
-                  min: 0,
-                  max: 100,
-                  divisions: 100,
-                  label: "${distance.toInt()} km",
-                  onChanged: (val) {
-                    setState(() {
-                      distance = val;
-                      isDistanceActive = val > 0;
-                    });
-                  },
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: resetFilters,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text("Reset Filter"),
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: applyFilters,
-                      icon: const Icon(Icons.filter_alt),
-                      label: const Text("Apply Filter"),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
 
-                // Cards
-                ...filteredData.map((item) => CompanionCard(data: item)).toList(),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 4),
+                  child: Text("Filter Companions", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                ),
+
+                // Filter form + Results
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    children: [
+                      if (!isDistanceActive)
+                        TextField(
+                          controller: _cityController,
+                          decoration: const InputDecoration(labelText: 'City'),
+                        ),
+                      TextField(
+                        controller: _sportController,
+                        decoration: const InputDecoration(labelText: 'Sport'),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField(
+                        value: gender,
+                        items: ['All', 'Male', 'Female'].map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
+                        onChanged: (val) => setState(() => gender = val!),
+                        decoration: const InputDecoration(labelText: 'Gender'),
+                      ),
+                      DropdownButtonFormField(
+                        value: age,
+                        items: ['All', '18-25', '26-33', '34-40', '40+'].map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
+                        onChanged: (val) => setState(() => age = val!),
+                        decoration: const InputDecoration(labelText: 'Age Limit'),
+                      ),
+                      DropdownButtonFormField(
+                        value: type,
+                        items: ['All', 'Paid', 'Unpaid'].map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
+                        onChanged: (val) => setState(() => type = val!),
+                        decoration: const InputDecoration(labelText: 'Type'),
+                      ),
+                      ListTile(
+                        title: Text(selectedDate != null
+                            ? "Date: ${DateFormat('yyyy-MM-dd').format(selectedDate!)}"
+                            : "Select Date"),
+                        trailing: const Icon(Icons.calendar_today),
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: DateTime.now(),
+                            firstDate: DateTime.now(),
+                            lastDate: DateTime(2100),
+                          );
+                          if (picked != null) {
+                            setState(() {
+                              selectedDate = picked;
+                            });
+                          }
+                        },
+                      ),
+                      Text("Distance: ${distance.toInt()} km"),
+                      Slider(
+                        value: distance,
+                        min: 0,
+                        max: 100,
+                        divisions: 100,
+                        label: "${distance.toInt()} km",
+                        onChanged: (val) {
+                          setState(() {
+                            distance = val;
+                            isDistanceActive = val > 0;
+                          });
+                        },
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: resetFilters,
+                            icon: const Icon(Icons.refresh),
+                            label: const Text("Reset Filter"),
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: applyFilters,
+                            icon: const Icon(Icons.filter_alt),
+                            label: const Text("Apply Filter"),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Companion Cards
+                      if (filteredData.isEmpty)
+                        const Center(child: Text("No companions found")),
+                      ...filteredData.map((item) => CompanionCard(data: item)).toList(),
+                    ],
+                  ),
+                ),
               ],
             ),
-          ),
-        ],
-      ),
     );
   }
 }
