@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import '../widgets/circular_avatar.dart';
 import '../providers/user_provider.dart';
 import 'chat_screen.dart';
-
+ 
 class ViewGroupsScreen extends StatefulWidget {
   const ViewGroupsScreen({super.key});
 
