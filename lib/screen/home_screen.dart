@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:http/http.dart' as http;
 import '../widgets/circular_avatar.dart';
 import '../providers/user_provider.dart';
 import '../utils/constants.dart';
@@ -14,42 +13,42 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
   final PageController _pageController = PageController(viewportFraction: 0.8);
-  Timer? _timer;
   int _currentPage = 0;
+  late Timer _timer;
 
-  // List of public GitHub image URLs
   final List<String> imageUrls = [
     'https://raw.githubusercontent.com/DIV-SYSTEM/g_map/master/assets/images/sport_comp.jpg',
-    'https://raw.githubusercontent.com/DIV-SYSTEM/g_map/master/assets/images/sport_comp.jpg', // Replace with actual second image URL
-    'https://raw.githubusercontent.com/DIV-SYSTEM/g_map/master/assets/images/sport_comp.jpg', // Replace with actual third image URL
+    'https://raw.githubusercontent.com/DIV-SYSTEM/g_map/master/assets/images/sport_comp.jpg',
+    'https://raw.githubusercontent.com/DIV-SYSTEM/g_map/master/assets/images/sport_comp.jpg',
   ];
 
   @override
   void initState() {
     super.initState();
-    // Start auto-scrolling
     _timer = Timer.periodic(const Duration(seconds: 3), (Timer timer) {
       if (_currentPage < imageUrls.length - 1) {
         _currentPage++;
       } else {
         _currentPage = 0;
       }
-      _pageController.animateToPage(
-        _currentPage,
-        duration: const Duration(milliseconds: 800),
-        curve: Curves.fastOutSlowIn,
-      );
+      if (_pageController.hasClients) {
+        _pageController.animateToPage(
+          _currentPage,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+      }
     });
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _timer.cancel();
     _pageController.dispose();
     super.dispose();
   }
@@ -57,8 +56,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<UserProvider>(context).user;
-    final screenHeight = MediaQuery.of(context).size.height;
-    final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -106,8 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const SportMainScreen(),
-                        ),
+                            builder: (_) => const SportMainScreen()),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -119,8 +115,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const Home_Food(initialUser: "Demo User")),
-                        ),
+                            builder: (_) =>
+                                const Home_Food(initialUser: "Demo User")),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -132,54 +128,47 @@ class _HomeScreenState extends State<HomeScreen> {
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const Home_Travel(initialUser: "Demo User")),
-                        ),
+                            builder: (_) =>
+                                const Home_Travel(initialUser: "Demo User")),
                       ),
+                    ),
+                    const SizedBox(height: 40),
+                    const Text(
+                      "Popular Highlights",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                     const SizedBox(height: 20),
-                    // Auto-playing image carousel using PageView
                     SizedBox(
-                      height: 200.0,
+                      height: 180,
                       child: PageView.builder(
                         controller: _pageController,
                         itemCount: imageUrls.length,
                         itemBuilder: (context, index) {
-                          return Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 5.0),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(10),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.grey.withOpacity(0.3),
-                                  spreadRadius: 2,
-                                  blurRadius: 5,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
-                            ),
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8.0),
                             child: ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: FutureBuilder(
-                                future: http.get(Uri.parse(imageUrls[index])),
-                                builder: (context, snapshot) {
-                                  if (snapshot.connectionState == ConnectionState.waiting) {
-                                    return const Center(child: CircularProgressIndicator());
-                                  } else if (snapshot.hasError || snapshot.data == null) {
-                                    return const StaticErrorWidget();
-                                  } else {
-                                    return Image.memory(
-                                      snapshot.data!.bodyBytes,
-                                      fit: BoxFit.cover,
-                                      width: double.infinity,
-                                      height: double.infinity,
-                                    );
-                                  }
+                              borderRadius: BorderRadius.circular(16),
+                              child: Image.network(
+                                imageUrls[index],
+                                fit: BoxFit.cover,
+                                loadingBuilder: (context, child, progress) {
+                                  if (progress == null) return child;
+                                  return const Center(
+                                      child: CircularProgressIndicator());
                                 },
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Center(child: Text('Image load failed')),
                               ),
                             ),
                           );
                         },
                       ),
                     ),
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
@@ -236,26 +225,6 @@ class _HomeScreenState extends State<HomeScreen> {
             const Icon(Icons.arrow_forward_ios, size: 18, color: Colors.grey),
           ],
         ),
-      ),
-    );
-  }
-}
-class StaticErrorWidget extends StatelessWidget {
-  const StaticErrorWidget({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.error, color: Colors.red, size: 50),
-          SizedBox(height: 8),
-          Text(
-            'Failed to load image',
-            style: TextStyle(color: Colors.red, fontSize: 16),
-          ),
-        ],
       ),
     );
   }
