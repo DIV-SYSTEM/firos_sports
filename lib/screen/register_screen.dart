@@ -28,12 +28,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  XFile? _aadhaarImage;
+  XFile? _documentImage;
   XFile? _liveImage;
   bool _isMatching = false;
   bool _isRegistering = false;
   String? _dob;
   int? _matchedAge;
+  String _selectedDocType = 'Aadhaar';
+
+  final String aadhaarApiUrl = 'https://your-aadhaar-api-link.com';
+  final String panApiUrl = 'https://your-pan-api-link.com';
 
   @override
   void dispose() {
@@ -62,7 +66,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return 0;
   }
 
-  Future<void> _pickAadhaarImage() async {
+  Future<void> _pickDocumentImage() async {
     final status = kIsWeb ? PermissionStatus.granted : await Permission.photos.request();
     if (status.isGranted) {
       final picker = ImagePicker();
@@ -73,9 +77,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         maxHeight: 1080,
       );
       if (pickedFile != null) {
-        setState(() => _aadhaarImage = pickedFile);
+        setState(() => _documentImage = pickedFile);
         if (kDebugMode) {
-          print('Aadhaar image selected: ${pickedFile.path}, size: ${await File(pickedFile.path).length()} bytes');
+          print('Document image selected: ${pickedFile.path}');
         }
       }
     } else {
@@ -96,7 +100,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (pickedFile != null) {
       setState(() => _liveImage = pickedFile);
       if (kDebugMode) {
-        print('Live image selected: ${pickedFile.path}, size: ${await File(pickedFile.path).length()} bytes');
+        print('Live image selected: ${pickedFile.path}');
       }
     } else if (!kIsWeb) {
       final status = await Permission.camera.request();
@@ -126,14 +130,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final tempFile = File('${tempDir.path}/${imageFile.name}.jpg');
     await tempFile.writeAsBytes(img.encodeJpg(image, quality: 100));
 
-    if (kDebugMode) {
-      print('Preprocessed image saved: ${tempFile.path}, size: ${await tempFile.length()} bytes');
-    }
     return tempFile;
   }
 
   Future<void> _matchImages() async {
-    if (_aadhaarImage == null || _liveImage == null) {
+    if (_documentImage == null || _liveImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please upload both images')),
       );
@@ -143,20 +144,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isMatching = true);
 
     try {
-      final uri = Uri.parse('https://af7d-60-254-105-242.ngrok-free.app/api/verify/');
+      final apiUrl = _selectedDocType == 'Aadhaar' ? aadhaarApiUrl : panApiUrl;
+      final uri = Uri.parse(apiUrl);
       final request = http.MultipartRequest('POST', uri);
 
+      final documentField = _selectedDocType == 'Aadhaar' ? 'aadhaar_image' : 'pan_image';
+
+      final documentFile = await _preprocessImage(_documentImage!);
+      final selfieFile = await _preprocessImage(_liveImage!);
+
+      request.files.add(await http.MultipartFile.fromPath(documentField, documentFile.path));
+      request.files.add(await http.MultipartFile.fromPath('selfie_image', selfieFile.path));
       request.headers['Accept'] = 'application/json';
-
-      final aadhaarFile = await _preprocessImage(_aadhaarImage!);
-      final liveFile = await _preprocessImage(_liveImage!);
-
-      if (!await aadhaarFile.exists() || !await liveFile.exists()) {
-        throw Exception('Preprocessed image files are missing');
-      }
-
-      request.files.add(await http.MultipartFile.fromPath('document', aadhaarFile.path));
-      request.files.add(await http.MultipartFile.fromPath('selfie', liveFile.path));
 
       final streamedResponse = await request.send().timeout(const Duration(seconds: 50));
       final response = await http.Response.fromStream(streamedResponse);
@@ -251,6 +250,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
           key: _formKey,
           child: Column(
             children: [
+              DropdownButtonFormField<String>(
+                value: _selectedDocType,
+                decoration: const InputDecoration(labelText: 'Choose Document Type'),
+                items: const [
+                  DropdownMenuItem(value: 'Aadhaar', child: Text('Aadhaar')),
+                  DropdownMenuItem(value: 'PAN', child: Text('PAN')),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => _selectedDocType = value);
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
               CustomTextField(
                 label: 'Name',
                 controller: _nameController,
@@ -274,8 +287,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   CustomButton(
-                    text: 'Upload Aadhaar/PAN',
-                    onPressed: _pickAadhaarImage,
+                    text: 'Upload $_selectedDocType',
+                    onPressed: _pickDocumentImage,
                   ),
                   CustomButton(
                     text: 'Capture Live Photo',
@@ -284,7 +297,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              if (_aadhaarImage != null) const Text('Aadhaar/PAN Image Selected'),
+              if (_documentImage != null) Text('$_selectedDocType Image Selected'),
               if (_liveImage != null) const Text('Live Photo Selected'),
               const SizedBox(height: 16),
               CustomButton(
