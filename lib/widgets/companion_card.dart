@@ -3,11 +3,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
- 
+
 import '../widgets/circular_avatar.dart';
 import '../providers/user_provider.dart';
-import '../screen/profile_screen1.dart'; // For ProfileScreenLite popup
+import '../screen/profile_screen1.dart';
 
 class CompanionCard extends StatefulWidget {
   final Map<String, dynamic> data;
@@ -85,8 +84,16 @@ class _CompanionCardState extends State<CompanionCard> {
 
   Future<void> sendJoinRequest() async {
     final userId = Provider.of<UserProvider>(context, listen: false).user?.id;
+    final organiserId = widget.data['createdBy'];
     final groupId = widget.data['groupId'];
-    if (userId == null || groupId == null) return;
+    if (userId == null || groupId == null || organiserId == null) return;
+
+    if (userId == organiserId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("You are the organiser.")),
+      );
+      return;
+    }
 
     final url = Uri.parse(
         'https://sportface-f9594-default-rtdb.firebaseio.com/groups/$groupId/requests/$userId.json');
@@ -95,6 +102,9 @@ class _CompanionCardState extends State<CompanionCard> {
       final res = await http.put(url, body: jsonEncode(true));
       if (res.statusCode == 200) {
         setState(() => isRequested = true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Request sent to the organiser.")),
+        );
       }
     } catch (e) {
       debugPrint("❌ Failed to send request: $e");
@@ -103,13 +113,10 @@ class _CompanionCardState extends State<CompanionCard> {
 
   Future<void> showOrganiserProfile(BuildContext context, String organiserId) async {
     try {
-      debugPrint("📥 Fetching organiser: $organiserId");
       final url = Uri.parse('https://sportface-f9594-default-rtdb.firebaseio.com/users/$organiserId.json');
       final res = await http.get(url);
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
-        debugPrint("✅ Organiser data: $data");
-
         if (data != null) {
           showDialog(
             context: context,
@@ -120,32 +127,11 @@ class _CompanionCardState extends State<CompanionCard> {
               imageUrl: data['imageUrl'],
             ),
           );
-        } else {
-          _showErrorDialog(context, "User not found.");
         }
-      } else {
-        _showErrorDialog(context, "Failed to fetch user.");
       }
     } catch (e) {
-      debugPrint("❌ Exception: $e");
-      _showErrorDialog(context, "Something went wrong.");
+      debugPrint("❌ Profile error: $e");
     }
-  }
-
-  void _showErrorDialog(BuildContext context, String msg) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Error"),
-        content: Text(msg),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text("OK"),
-          )
-        ],
-      ),
-    );
   }
 
   String formatDuration(Duration? d) {
@@ -200,7 +186,6 @@ class _CompanionCardState extends State<CompanionCard> {
         padding: const EdgeInsets.all(12.0),
         child: Stack(
           children: [
-            // 👤 Organiser avatar
             Positioned(
               top: 0,
               right: 0,
