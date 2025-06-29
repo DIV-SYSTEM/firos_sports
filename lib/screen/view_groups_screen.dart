@@ -112,7 +112,7 @@ class _ViewGroupsScreenState extends State<ViewGroupsScreen> {
         email: user['email'] ?? 'N/A',
         age: user['age']?.toString() ?? 'N/A',
         imageUrl: user['imageUrl'],
-        verified: user['verified'] ?? false,
+        
       ),
     );
   }
