@@ -29,21 +29,28 @@ class CircularAvatar extends StatelessWidget {
           return CircleAvatar(
             radius: radius,
             backgroundColor: Colors.grey[300],
-            child: const CircularProgressIndicator(),
+            child: SizedBox(
+              height: radius * 0.8,
+              width: radius * 0.8,
+              child: const CircularProgressIndicator(strokeWidth: 2),
+            ),
           );
         }
-        final imageUrl = snapshot.data;
-        if (imageUrl == null || imageUrl.isEmpty) {
+
+        final resolvedImage = snapshot.data;
+
+        if (resolvedImage == null || resolvedImage.trim().isEmpty) {
           return CircleAvatar(
             radius: radius,
             backgroundColor: Colors.grey[300],
             child: Icon(Icons.person, size: radius, color: Colors.grey[600]),
           );
         }
+
         try {
-          if (imageUrl.startsWith('data:image')) {
-            // Handle base64 image
-            final base64String = imageUrl.split(',').last;
+          if (resolvedImage.startsWith('data:image')) {
+            // Base64 image
+            final base64String = resolvedImage.split(',').last;
             final imageBytes = base64Decode(base64String);
             return CircleAvatar(
               radius: radius,
@@ -51,16 +58,16 @@ class CircularAvatar extends StatelessWidget {
               backgroundColor: Colors.grey[300],
             );
           } else {
-            // Fallback for network images (if any legacy data exists)
+            // Network image
             return CircleAvatar(
               radius: radius,
-              backgroundImage: NetworkImage(imageUrl),
+              backgroundImage: NetworkImage(resolvedImage),
               backgroundColor: Colors.grey[300],
             );
           }
         } catch (e) {
           if (kDebugMode) {
-            print('Error loading image: $e');
+            print('❌ Error loading image: $e');
           }
           return CircleAvatar(
             radius: radius,
@@ -72,10 +79,11 @@ class CircularAvatar extends StatelessWidget {
     );
   }
 
-  Future<String?> _getImage(String? userId) async {
-    if (imageUrl != null) return imageUrl;
-    if (userId == null) return null;
+  Future<String?> _getImage(String? effectiveUserId) async {
+    if (imageUrl != null && imageUrl!.trim().isNotEmpty) return imageUrl;
+    if (effectiveUserId == null) return null;
+
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('user_${userId}_image');
+    return prefs.getString('user_${effectiveUserId}_image');
   }
 }
