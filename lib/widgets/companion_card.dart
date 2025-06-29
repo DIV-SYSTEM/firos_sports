@@ -206,7 +206,7 @@ class _CompanionCardState extends State<CompanionCard> {
               right: 0,
               child: GestureDetector(
                 onTap: () => showOrganiserProfile(context, organiserId),
-                child: CircularAvatar(imageUrl: '', userId: organiserId),
+                child: CircularAvatar(userId: organiserId),
               ),
             ),
             Column(
