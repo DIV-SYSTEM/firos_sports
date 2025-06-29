@@ -2,10 +2,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+
 import '../widgets/circular_avatar.dart';
 import '../providers/user_provider.dart';
 import 'chat_screen.dart';
- 
+import 'profile_screen1.dart'; // For ProfileScreenLite popup
+
 class ViewGroupsScreen extends StatefulWidget {
   const ViewGroupsScreen({super.key});
 
@@ -14,8 +16,10 @@ class ViewGroupsScreen extends StatefulWidget {
 }
 
 class _ViewGroupsScreenState extends State<ViewGroupsScreen> {
-  List<Map<String, dynamic>> userGroups = [];
+  List<Map<String, dynamic>> organiserGroups = [];
+  List<Map<String, dynamic>> memberGroups = [];
   Map<String, dynamic> userCache = {}; // Cache user profiles
+  String? currentUserId;
 
   @override
   void initState() {
@@ -26,71 +30,64 @@ class _ViewGroupsScreenState extends State<ViewGroupsScreen> {
   Future<void> fetchGroups() async {
     final userId = Provider.of<UserProvider>(context, listen: false).user?.id;
     if (userId == null) return;
+    currentUserId = userId;
 
     final url = Uri.parse("https://sportface-f9594-default-rtdb.firebaseio.com/groups.json");
     final res = await http.get(url);
 
     if (res.statusCode == 200) {
       final Map<String, dynamic> data = jsonDecode(res.body);
-      final List<Map<String, dynamic>> filtered = [];
+      final List<Map<String, dynamic>> organiser = [];
+      final List<Map<String, dynamic>> member = [];
 
       data.forEach((key, value) {
-        if (value['createdBy'] == userId) {
-          filtered.add({"id": key, ...value});
+        final createdBy = value['createdBy'];
+        final List members = value['members'] ?? [];
+
+        if (createdBy == userId) {
+          organiser.add({"id": key, ...value});
+        } else if (members.contains(userId)) {
+          member.add({"id": key, ...value});
         }
       });
 
       setState(() {
-        userGroups = filtered;
+        organiserGroups = organiser;
+        memberGroups = member;
       });
     }
-  }
-
-  Future<void> renameGroup(String groupId, String newName) async {
-    final url = Uri.parse("https://sportface-f9594-default-rtdb.firebaseio.com/groups/$groupId/groupName.json");
-    await http.put(url, body: jsonEncode(newName));
-    fetchGroups();
   }
 
   Future<void> updateGroupRequest(String groupId, String userId, bool accept) async {
     final groupRef = "https://sportface-f9594-default-rtdb.firebaseio.com/groups/$groupId";
 
+    // Remove request
     await http.delete(Uri.parse("$groupRef/requests/$userId.json"));
 
     if (accept) {
+      // Add user to members (use PUT with index or POST depending on DB setup)
       final memberRef = Uri.parse("$groupRef/members.json");
-      await http.post(memberRef, body: jsonEncode(userId));
+
+      // Fetch current members
+      final currentMembersRes = await http.get(memberRef);
+      List<dynamic> currentMembers = [];
+      if (currentMembersRes.statusCode == 200) {
+        final resData = jsonDecode(currentMembersRes.body);
+        if (resData is List) {
+          currentMembers = resData;
+        } else if (resData is Map) {
+          currentMembers = resData.values.toList();
+        }
+      }
+
+      // Avoid duplicates
+      if (!currentMembers.contains(userId)) {
+        currentMembers.add(userId);
+        await http.put(memberRef, body: jsonEncode(currentMembers));
+      }
     }
 
     fetchGroups();
-  }
-
-  void showRenameDialog(String groupId, String currentName) {
-    final controller = TextEditingController(text: currentName);
-
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Rename Group"),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(labelText: 'New Group Name'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              renameGroup(groupId, controller.text.trim());
-              Navigator.pop(context);
-            },
-            child: const Text("Rename"),
-          ),
-        ],
-      ),
-    );
   }
 
   Future<Map<String, dynamic>?> fetchUserProfile(String userId) async {
@@ -106,139 +103,176 @@ class _ViewGroupsScreenState extends State<ViewGroupsScreen> {
     return null;
   }
 
+  void showUserProfilePopup(BuildContext context, Map<String, dynamic>? user) {
+    if (user == null) return;
+    showDialog(
+      context: context,
+      builder: (_) => ProfileScreenLite(
+        name: user['name'] ?? 'N/A',
+        email: user['email'] ?? 'N/A',
+        age: user['age']?.toString() ?? 'N/A',
+        imageUrl: user['imageUrl'],
+        verified: user['verified'] ?? false,
+      ),
+    );
+  }
+
+  Widget buildGroupCard(Map<String, dynamic> group, {bool isOrganiser = false}) {
+    final groupId = group['id'];
+    final groupName = group['groupName'] ?? 'Unnamed';
+    final List<dynamic> members = List<dynamic>.from(group['members'] ?? []);
+    final Map<String, dynamic> requests = Map<String, dynamic>.from(group['requests'] ?? {});
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 20),
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Group Header
+            Text(
+              groupName,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Requests Section (only if organiser)
+            if (isOrganiser && requests.isNotEmpty) ...[
+              const Text("Join Requests:", style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              Column(
+                children: requests.keys.map((userId) {
+                  return FutureBuilder(
+                    future: fetchUserProfile(userId),
+                    builder: (context, snapshot) {
+                      final user = snapshot.data as Map<String, dynamic>?;
+
+                      return ListTile(
+                        leading: GestureDetector(
+                          onTap: () => showUserProfilePopup(context, user),
+                          child: CircularAvatar(
+                            userId: userId,
+                            imageUrl: user?['imageUrl'] ?? '',
+                          ),
+                        ),
+                        title: Text(user?['name'] ?? 'User ID: $userId'),
+                        subtitle: Text(user?['email'] ?? ''),
+                        trailing: Wrap(
+                          spacing: 10,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.check, color: Colors.green),
+                              onPressed: () => updateGroupRequest(groupId, userId, true),
+                              tooltip: "Approve",
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close, color: Colors.red),
+                              onPressed: () => updateGroupRequest(groupId, userId, false),
+                              tooltip: "Reject",
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                }).toList(),
+              ),
+              const Divider(),
+            ],
+
+            // Members Section
+            const Text("Group Members:", style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: members.map((uid) {
+                return FutureBuilder(
+                  future: fetchUserProfile(uid),
+                  builder: (context, snapshot) {
+                    final user = snapshot.data as Map<String, dynamic>?;
+                    return CircularAvatar(
+                      userId: uid,
+                      imageUrl: user?['imageUrl'] ?? '',
+                    );
+                  },
+                );
+              }).toList(),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Chat Button
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ChatScreen(
+                        groupId: groupId,
+                        groupName: groupName,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.chat),
+                label: const Text("Chat"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blueAccent,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("My Groups")),
-      body: userGroups.isEmpty
-          ? const Center(child: Text("No groups created yet"))
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: userGroups.length,
-              itemBuilder: (ctx, i) {
-                final group = userGroups[i];
-                final groupId = group['id'];
-                final groupName = group['groupName'] ?? 'Unnamed';
-                final List<dynamic> members = List.from(group['members'] ?? []);
-                final Map<String, dynamic> requests = Map<String, dynamic>.from(group['requests'] ?? {});
+      body: RefreshIndicator(
+        onRefresh: fetchGroups,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Organiser Groups Section
+              Text(
+                "Groups You Organise",
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              if (organiserGroups.isEmpty)
+                const Text("You have not created any groups yet."),
+              ...organiserGroups.map((g) => buildGroupCard(g, isOrganiser: true)),
 
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 20),
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Group Header
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              groupName,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.edit),
-                              onPressed: () => showRenameDialog(groupId, groupName),
-                            ),
-                          ],
-                        ),
-                        const Divider(),
+              const SizedBox(height: 24),
 
-                        // Requests
-                        if (requests.isNotEmpty) ...[
-                          const Text("Join Requests:", style: TextStyle(fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 6),
-                          Column(
-                            children: requests.keys.map((userId) {
-                              return FutureBuilder(
-                                future: fetchUserProfile(userId),
-                                builder: (context, snapshot) {
-                                  final user = snapshot.data as Map<String, dynamic>?;
-
-                                  return ListTile(
-                                    leading: CircularAvatar(
-                                      userId: userId,
-                                      imageUrl: user?['imageUrl'] ?? '',
-                                    ),
-                                    title: Text(user?['name'] ?? 'User ID: $userId'),
-                                    subtitle: Text(user?['email'] ?? ''),
-                                    trailing: Wrap(
-                                      spacing: 10,
-                                      children: [
-                                        IconButton(
-                                          icon: const Icon(Icons.check, color: Colors.green),
-                                          onPressed: () => updateGroupRequest(groupId, userId, true),
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(Icons.close, color: Colors.red),
-                                          onPressed: () => updateGroupRequest(groupId, userId, false),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              );
-                            }).toList(),
-                          ),
-                          const Divider(),
-                        ],
-
-                        // Members
-                        const Text("Group Members:", style: TextStyle(fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          children: members.map((uid) {
-                            return FutureBuilder(
-                              future: fetchUserProfile(uid),
-                              builder: (context, snapshot) {
-                                final user = snapshot.data as Map<String, dynamic>?;
-                                return CircularAvatar(
-                                  userId: uid,
-                                  imageUrl: user?['imageUrl'] ?? '',
-                                );
-                              },
-                            );
-                          }).toList(),
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        // Chat Button
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => ChatScreen(
-                                    groupId: groupId,
-                                    groupName: groupName,
-                                  ),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.chat),
-                            label: const Text("Chat"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blueAccent,
-                              foregroundColor: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
+              // Member Groups Section
+              Text(
+                "Groups You Joined",
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              if (memberGroups.isEmpty)
+                const Text("You have not joined any groups yet."),
+              ...memberGroups.map((g) => buildGroupCard(g, isOrganiser: false)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
