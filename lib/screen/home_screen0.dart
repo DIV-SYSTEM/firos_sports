@@ -303,7 +303,12 @@ class _SportMainScreenState extends State<SportMainScreen> {
                 else
                   ...filteredData.map((item) {
                     try {
-                      return CompanionCard(data: Map<String, dynamic>.from(item));
+                      return CompanionCard(
+                        data: Map<String, dynamic>.from(item),
+                        onDeleted: () async {
+                          await fetchData();
+                        },
+                      );
                     } catch (e) {
                       log("Error rendering item: $e");
                       return const Padding(
