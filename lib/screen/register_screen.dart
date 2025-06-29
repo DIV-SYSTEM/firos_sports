@@ -143,7 +143,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isMatching = true);
 
     try {
-      final uri = Uri.parse('https://98e2-180-151-27-233.ngrok-free.app/api/verify/');
+      final uri = Uri.parse('https://af7d-60-254-105-242.ngrok-free.app/api/verify/');
       final request = http.MultipartRequest('POST', uri);
 
       request.headers['Accept'] = 'application/json';
