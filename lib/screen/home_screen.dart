@@ -23,8 +23,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final List<String> imageUrls = [
     'https://raw.githubusercontent.com/DIV-SYSTEM/g_map/master/assets/images/sport_comp.jpg',
-    'https://raw.githubusercontent.com/DIV-SYSTEM/g_map/master/assets/images/sport_comp.jpg',
-    'https://raw.githubusercontent.com/DIV-SYSTEM/g_map/master/assets/images/sport_comp.jpg',
+    'https://raw.githubusercontent.com/DIV-SYSTEM/g_map/master/assets/images/food-comp.jpg',
+    'https://raw.githubusercontent.com/DIV-SYSTEM/g_map/master/assets/images/travel-comp.jpg',
   ];
 
   @override
@@ -89,6 +89,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
+                  color: Colors.lightBlue,
                 ),
               ),
               const SizedBox(height: 40),
@@ -134,10 +135,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 40),
                     const Text(
-                      "Popular Highlights",
+                      "One Destination to Find Your Perfect Companion",
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
+                        color: Colors.lightBlue,
                       ),
                       textAlign: TextAlign.center,
                     ),
