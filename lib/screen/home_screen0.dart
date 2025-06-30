@@ -1,3 +1,4 @@
+// ... your existing imports
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -19,8 +20,8 @@ class SportMainScreen extends StatefulWidget {
 }
 
 class _SportMainScreenState extends State<SportMainScreen> {
-  final TextEditingController _cityController = TextEditingController();
-  final TextEditingController _sportController = TextEditingController();
+  String? selectedCity;
+  String? selectedSport;
 
   String gender = 'All';
   String age = 'All';
@@ -35,6 +36,20 @@ class _SportMainScreenState extends State<SportMainScreen> {
   bool isDistanceActive = false;
   bool isLoading = true;
   bool showLogs = true;
+
+  final List<String> cityOptions = [
+    'Ahmedabad', 'Bangalore', 'Bhopal', 'Chandigarh', 'Chennai',
+    'Delhi', 'Hyderabad', 'Indore', 'Jaipur', 'Kanpur',
+    'Kochi', 'Kolkata', 'Lucknow', 'Mumbai', 'Nagpur',
+    'Patna', 'Pune', 'Ranchi', 'Surat', 'Visakhapatnam',
+  ];
+
+  final List<String> sportOptions = [
+    'Badminton', 'Basketball', 'Boxing', 'Chess', 'Cricket',
+    'Cycling', 'Football', 'Gym', 'Hockey', 'Kabaddi',
+    'Martial Arts', 'PUBG', 'Running', 'Skating', 'Swimming',
+    'Table Tennis', 'Tennis', 'Volleyball', 'Weightlifting', 'Yoga',
+  ];
 
   void log(String msg) {
     print(msg);
@@ -106,14 +121,14 @@ class _SportMainScreenState extends State<SportMainScreen> {
   void applyFilters() {
     List<dynamic> results = List.from(allData);
 
-    if (!isDistanceActive && _cityController.text.trim().isNotEmpty) {
+    if (!isDistanceActive && selectedCity != null && selectedCity!.isNotEmpty) {
       results = results.where((item) =>
-          (item['city'] ?? '').toString().toLowerCase().contains(_cityController.text.trim().toLowerCase())).toList();
+        (item['city'] ?? '').toString().toLowerCase().contains(selectedCity!.toLowerCase())).toList();
     }
 
-    if (_sportController.text.trim().isNotEmpty) {
+    if (selectedSport != null && selectedSport!.isNotEmpty) {
       results = results.where((item) =>
-          (item['sport'] ?? '').toString().toLowerCase().contains(_sportController.text.trim().toLowerCase())).toList();
+        (item['sport'] ?? '').toString().toLowerCase().contains(selectedSport!.toLowerCase())).toList();
     }
 
     if (gender != 'All') {
@@ -130,8 +145,8 @@ class _SportMainScreenState extends State<SportMainScreen> {
 
     if (selectedDate != null) {
       results = results.where((item) =>
-          item['date'] != null &&
-          item['date'] == DateFormat('yyyy-MM-dd').format(selectedDate!)).toList();
+        item['date'] != null &&
+        item['date'] == DateFormat('yyyy-MM-dd').format(selectedDate!)).toList();
     }
 
     log("Filters applied: ${results.length} items");
@@ -142,8 +157,8 @@ class _SportMainScreenState extends State<SportMainScreen> {
   }
 
   void resetFilters() {
-    _cityController.clear();
-    _sportController.clear();
+    selectedCity = null;
+    selectedSport = null;
     gender = 'All';
     age = 'All';
     type = 'All';
@@ -217,12 +232,20 @@ class _SportMainScreenState extends State<SportMainScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               children: [
                 if (!isDistanceActive)
-                  TextField(
-                    controller: _cityController,
+                  DropdownButtonFormField(
+                    value: selectedCity,
+                    items: cityOptions
+                        .map((val) => DropdownMenuItem(value: val, child: Text(val)))
+                        .toList(),
+                    onChanged: (val) => setState(() => selectedCity = val),
                     decoration: const InputDecoration(labelText: 'City'),
                   ),
-                TextField(
-                  controller: _sportController,
+                DropdownButtonFormField(
+                  value: selectedSport,
+                  items: sportOptions
+                      .map((val) => DropdownMenuItem(value: val, child: Text(val)))
+                      .toList(),
+                  onChanged: (val) => setState(() => selectedSport = val),
                   decoration: const InputDecoration(labelText: 'Sport'),
                 ),
                 const SizedBox(height: 8),
