@@ -31,16 +31,49 @@ class _CreateRequirementScreenState extends State<CreateRequirementScreen> {
   double _timerHours = 1;
 
   final List<String> sportOptions = [
-    'Badminton', 'Basketball', 'Boxing', 'Chess', 'Cricket', 'Cycling',
-    'Football', 'Gym', 'Hockey', 'Kabaddi', 'Martial Arts', 'PUBG',
-    'Running', 'Skating', 'Swimming', 'Table Tennis', 'Tennis',
-    'Volleyball', 'Weightlifting', 'Yoga',
+    'Badminton',
+    'Basketball',
+    'Boxing',
+    'Chess',
+    'Cricket',
+    'Cycling',
+    'Football',
+    'Gym',
+    'Hockey',
+    'Kabaddi',
+    'Martial Arts',
+    'PUBG',
+    'Running',
+    'Skating',
+    'Swimming',
+    'Table Tennis',
+    'Tennis',
+    'Volleyball',
+    'Weightlifting',
+    'Yoga',
   ];
 
   final List<String> cityOptions = [
-    'Ahmedabad', 'Bangalore', 'Bhopal', 'Chandigarh', 'Chennai', 'Delhi',
-    'Hyderabad', 'Indore', 'Jaipur', 'Kanpur', 'Kochi', 'Kolkata',
-    'Lucknow', 'Mumbai', 'Nagpur', 'Patna', 'Pune', 'Ranchi', 'Surat', 'Visakhapatnam',
+    'Ahmedabad',
+    'Bangalore',
+    'Bhopal',
+    'Chandigarh',
+    'Chennai',
+    'Delhi',
+    'Hyderabad',
+    'Indore',
+    'Jaipur',
+    'Kanpur',
+    'Kochi',
+    'Kolkata',
+    'Lucknow',
+    'Mumbai',
+    'Nagpur',
+    'Patna',
+    'Pune',
+    'Ranchi',
+    'Surat',
+    'Visakhapatnam',
   ];
 
   final List<String> descriptionOptions = [
@@ -102,7 +135,7 @@ class _CreateRequirementScreenState extends State<CreateRequirementScreen> {
         _selectedDate != null &&
         _startTimeController.text.isNotEmpty &&
         _endTimeController.text.isNotEmpty) {
-
+      
       final timestamp = DateTime.now().toIso8601String();
       final requirementId = DateTime.now().millisecondsSinceEpoch.toString();
 
@@ -167,153 +200,51 @@ class _CreateRequirementScreenState extends State<CreateRequirementScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1F1F2E), // Light dark background
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF3B3B98), // Deep blue-purple
-        title: const Text('Create Requirement', style: TextStyle(color: Colors.white)),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
+      appBar: AppBar(title: const Text('Create Requirement')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
-        child: Theme(
-          data: ThemeData(
-            inputDecorationTheme: const InputDecorationTheme(
-              labelStyle: TextStyle(color: Colors.white),
-              hintStyle: TextStyle(color: Colors.white70),
-              iconColor: Colors.pinkAccent,
-              focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.pinkAccent)),
-            ),
-          ),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              children: [
-                CustomDropdown(
-                  label: 'Sport',
-                  items: sportOptions,
-                  value: _selectedSport,
-                  onChanged: (val) => setState(() => _selectedSport = val),
-                  icon: const Icon(Icons.sports_soccer, color: Colors.pinkAccent),
-                  dropdownColor: Colors.pink.shade100,
-                ),
-                TextFormField(
-                  controller: _groupNameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Group Name',
-                    icon: Icon(Icons.group, color: Colors.pinkAccent),
-                  ),
-                  validator: (value) => value!.isEmpty ? 'Required' : null,
-                ),
-                TextFormField(
-                  controller: _eventVenueController,
-                  decoration: const InputDecoration(
-                    labelText: 'Event Venue',
-                    icon: Icon(Icons.event, color: Colors.pinkAccent),
-                  ),
-                ),
-                TextFormField(
-                  controller: _meetVenueController,
-                  decoration: const InputDecoration(
-                    labelText: 'Meet Venue',
-                    icon: Icon(Icons.location_on, color: Colors.pinkAccent),
-                  ),
-                ),
-                CustomDropdown(
-                  label: 'City',
-                  items: cityOptions,
-                  value: _selectedCity,
-                  onChanged: (val) => setState(() => _selectedCity = val),
-                  icon: const Icon(Icons.location_city, color: Colors.pinkAccent),
-                  dropdownColor: Colors.pink.shade100,
-                ),
-                CustomDropdown(
-                  label: "Description",
-                  items: descriptionOptions,
-                  value: _selectedDescription,
-                  onChanged: (val) => setState(() => _selectedDescription = val),
-                  icon: const Icon(Icons.description, color: Colors.pinkAccent),
-                  dropdownColor: Colors.pink.shade100,
-                ),
-                CustomDropdown(
-                  label: "Gender",
-                  items: genderOptions,
-                  value: _selectedGender,
-                  onChanged: (val) => setState(() => _selectedGender = val),
-                  icon: const Icon(Icons.transgender, color: Colors.pinkAccent),
-                  dropdownColor: Colors.pink.shade100,
-                ),
-                CustomDropdown(
-                  label: "Age Limit",
-                  items: ageOptions,
-                  value: _selectedAge,
-                  onChanged: (val) => setState(() => _selectedAge = val),
-                  icon: const Icon(Icons.cake, color: Colors.pinkAccent),
-                  dropdownColor: Colors.pink.shade100,
-                ),
-                CustomDropdown(
-                  label: "Type",
-                  items: typeOptions,
-                  value: _selectedType,
-                  onChanged: (val) => setState(() => _selectedType = val),
-                  icon: const Icon(Icons.attach_money, color: Colors.pinkAccent),
-                  dropdownColor: Colors.pink.shade100,
-                ),
-                const SizedBox(height: 12),
-                ListTile(
-                  title: Text(
-                    _selectedDate != null
-                        ? "Date: ${DateFormat('yyyy-MM-dd').format(_selectedDate!)}"
-                        : "Select Date",
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                  trailing: const Icon(Icons.calendar_today, color: Colors.pinkAccent),
-                  onTap: _selectDate,
-                ),
-                TextFormField(
-                  controller: _startTimeController,
-                  readOnly: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Start Time',
-                    icon: Icon(Icons.schedule, color: Colors.pinkAccent),
-                  ),
-                  onTap: () => _selectTime(_startTimeController),
-                ),
-                TextFormField(
-                  controller: _endTimeController,
-                  readOnly: true,
-                  decoration: const InputDecoration(
-                    labelText: 'End Time',
-                    icon: Icon(Icons.schedule_outlined, color: Colors.pinkAccent),
-                  ),
-                  onTap: () => _selectTime(_endTimeController),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  "Card Duration (hours): ${_timerHours.toInt()}",
-                  style: const TextStyle(color: Colors.white),
-                ),
-                Slider(
-                  value: _timerHours,
-                  min: 1,
-                  max: 72,
-                  divisions: 71,
-                  label: _timerHours.toInt().toString(),
-                  activeColor: Colors.pinkAccent,
-                  onChanged: (value) => setState(() => _timerHours = value),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.pinkAccent,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  ),
-                  onPressed: _submitForm,
-                  icon: const Icon(Icons.send),
-                  label: const Text("Submit"),
-                ),
-              ],
-            ),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              CustomDropdown(label: 'Sport', items: sportOptions, value: _selectedSport, onChanged: (val) => setState(() => _selectedSport = val)),
+              TextFormField(controller: _groupNameController, decoration: const InputDecoration(labelText: 'Group Name'), validator: (value) => value!.isEmpty ? 'Required' : null),
+              TextFormField(controller: _eventVenueController, decoration: const InputDecoration(labelText: 'Event Venue')),
+              TextFormField(controller: _meetVenueController, decoration: const InputDecoration(labelText: 'Meet Venue')),
+              CustomDropdown(label: 'City', items: cityOptions, value: _selectedCity, onChanged: (val) => setState(() => _selectedCity = val)),
+
+              CustomDropdown(label: "Description", items: descriptionOptions, value: _selectedDescription, onChanged: (val) => setState(() => _selectedDescription = val)),
+              CustomDropdown(label: "Gender", items: genderOptions, value: _selectedGender, onChanged: (val) => setState(() => _selectedGender = val)),
+              CustomDropdown(label: "Age Limit", items: ageOptions, value: _selectedAge, onChanged: (val) => setState(() => _selectedAge = val)),
+              CustomDropdown(label: "Type", items: typeOptions, value: _selectedType, onChanged: (val) => setState(() => _selectedType = val)),
+
+              const SizedBox(height: 12),
+              ListTile(
+                title: Text(_selectedDate != null ? "Date: ${DateFormat('yyyy-MM-dd').format(_selectedDate!)}" : "Select Date"),
+                trailing: const Icon(Icons.calendar_today),
+                onTap: _selectDate,
+              ),
+              TextFormField(controller: _startTimeController, readOnly: true, decoration: const InputDecoration(labelText: 'Start Time'), onTap: () => _selectTime(_startTimeController)),
+              TextFormField(controller: _endTimeController, readOnly: true, decoration: const InputDecoration(labelText: 'End Time'), onTap: () => _selectTime(_endTimeController)),
+
+              const SizedBox(height: 16),
+              Text("Card Duration (hours): ${_timerHours.toInt()}"),
+              Slider(
+                value: _timerHours,
+                min: 1,
+                max: 72,
+                divisions: 71,
+                label: _timerHours.toInt().toString(),
+                onChanged: (value) => setState(() => _timerHours = value),
+              ),
+
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _submitForm,
+                icon: const Icon(Icons.send),
+                label: const Text("Submit"),
+              ),
+            ],
           ),
         ),
       ),
