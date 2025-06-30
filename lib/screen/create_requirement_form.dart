@@ -15,11 +15,11 @@ class CreateRequirementScreen extends StatefulWidget {
 
 class _CreateRequirementScreenState extends State<CreateRequirementScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _sportController = TextEditingController();
+  String? _selectedSport;
   final TextEditingController _groupNameController = TextEditingController();
   final TextEditingController _eventVenueController = TextEditingController();
   final TextEditingController _meetVenueController = TextEditingController();
-  final TextEditingController _cityController = TextEditingController();
+  String? _selectedCity;
   final TextEditingController _startTimeController = TextEditingController();
   final TextEditingController _endTimeController = TextEditingController();
 
@@ -29,6 +29,52 @@ class _CreateRequirementScreenState extends State<CreateRequirementScreen> {
   String? _selectedType;
   DateTime? _selectedDate;
   double _timerHours = 1;
+
+  final List<String> sportOptions = [
+    'Badminton',
+    'Basketball',
+    'Boxing',
+    'Chess',
+    'Cricket',
+    'Cycling',
+    'Football',
+    'Gym',
+    'Hockey',
+    'Kabaddi',
+    'Martial Arts',
+    'PUBG',
+    'Running',
+    'Skating',
+    'Swimming',
+    'Table Tennis',
+    'Tennis',
+    'Volleyball',
+    'Weightlifting',
+    'Yoga',
+  ];
+
+  final List<String> cityOptions = [
+    'Ahmedabad',
+    'Bangalore',
+    'Bhopal',
+    'Chandigarh',
+    'Chennai',
+    'Delhi',
+    'Hyderabad',
+    'Indore',
+    'Jaipur',
+    'Kanpur',
+    'Kochi',
+    'Kolkata',
+    'Lucknow',
+    'Mumbai',
+    'Nagpur',
+    'Patna',
+    'Pune',
+    'Ranchi',
+    'Surat',
+    'Visakhapatnam',
+  ];
 
   final List<String> descriptionOptions = [
     'Looking for professional companion',
@@ -80,6 +126,8 @@ class _CreateRequirementScreenState extends State<CreateRequirementScreen> {
     print("✅ Current user ID: ${user.id}");
 
     if (_formKey.currentState!.validate() &&
+        _selectedSport != null &&
+        _selectedCity != null &&
         _selectedDescription != null &&
         _selectedGender != null &&
         _selectedAge != null &&
@@ -92,11 +140,11 @@ class _CreateRequirementScreenState extends State<CreateRequirementScreen> {
       final requirementId = DateTime.now().millisecondsSinceEpoch.toString();
 
       final data = {
-        "sport": _sportController.text.trim(),
+        "sport": _selectedSport,
         "groupName": _groupNameController.text.trim(),
         "eventVenue": _eventVenueController.text.trim(),
         "meetVenue": _meetVenueController.text.trim(),
-        "city": _cityController.text.trim(),
+        "city": _selectedCity,
         "description": _selectedDescription,
         "gender": _selectedGender,
         "ageLimit": _selectedAge,
@@ -159,11 +207,11 @@ class _CreateRequirementScreenState extends State<CreateRequirementScreen> {
           key: _formKey,
           child: Column(
             children: [
-              TextFormField(controller: _sportController, decoration: const InputDecoration(labelText: 'Sport'), validator: (value) => value!.isEmpty ? 'Required' : null),
+              CustomDropdown(label: 'Sport', items: sportOptions, value: _selectedSport, onChanged: (val) => setState(() => _selectedSport = val)),
               TextFormField(controller: _groupNameController, decoration: const InputDecoration(labelText: 'Group Name'), validator: (value) => value!.isEmpty ? 'Required' : null),
               TextFormField(controller: _eventVenueController, decoration: const InputDecoration(labelText: 'Event Venue')),
               TextFormField(controller: _meetVenueController, decoration: const InputDecoration(labelText: 'Meet Venue')),
-              TextFormField(controller: _cityController, decoration: const InputDecoration(labelText: 'City'), validator: (value) => value!.isEmpty ? 'Required' : null),
+              CustomDropdown(label: 'City', items: cityOptions, value: _selectedCity, onChanged: (val) => setState(() => _selectedCity = val)),
 
               CustomDropdown(label: "Description", items: descriptionOptions, value: _selectedDescription, onChanged: (val) => setState(() => _selectedDescription = val)),
               CustomDropdown(label: "Gender", items: genderOptions, value: _selectedGender, onChanged: (val) => setState(() => _selectedGender = val)),
