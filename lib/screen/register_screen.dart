@@ -36,8 +36,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   int? _matchedAge;
   String _selectedDocType = 'Aadhaar';
 
-  final String aadhaarApiUrl = 'https://7379-27-4-174-55.ngrok-free.app/api/verify/aadhaar/';
-  final String panApiUrl = 'https://7379-27-4-174-55.ngrok-free.app/api/verify/pan/';
+  final String aadhaarApiUrl = 'https://1520-180-151-25-86.ngrok-free.app/api/verify/aadhaar/';
+  final String panApiUrl = 'https://1520-180-151-25-86.ngrok-free.app/api/verify/pan/';
 
   @override
   void dispose() {
