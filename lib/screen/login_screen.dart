@@ -9,7 +9,7 @@ import 'register_screen.dart';
 import 'home_screen.dart';
 import 'cosmic_background.dart';
 import 'cosmic_progress_bar.dart';
-import 'animated_success.dart';
+import 'animated_success1.dart';
 import 'animated_failure.dart';
 import 'theatre_curtain.dart';
 
