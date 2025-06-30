@@ -7,7 +7,12 @@ import '../providers/user_provider.dart';
 import '../utils/helpers.dart';
 import 'register_screen.dart';
 import 'home_screen.dart';
- 
+import 'cosmic_background.dart';
+import 'cosmic_progress_bar.dart';
+import 'animated_success.dart';
+import 'animated_failure.dart';
+import 'theatre_curtain.dart';
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -15,22 +20,50 @@ class LoginScreen extends StatefulWidget {
   _LoginScreenState createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
+  late AnimationController _scaleController;
+  late Animation<double> _scaleAnimation;
+  late AnimationController _progressController;
+  int _currentStep = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _fadeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    );
+    _scaleController = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _scaleController, curve: Curves.easeOutBack),
+    );
+    _progressController = AnimationController(vsync: this, duration: const Duration(seconds: 1));
+    _fadeController.forward();
+  }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _fadeController.dispose();
+    _scaleController.dispose();
+    _progressController.dispose();
     super.dispose();
   }
 
   void _login() async {
     if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
+      setState(() {
+        _isLoading = true;
+        _currentStep = _currentStep < 3 ? 3 : _currentStep;
+        _progressController.forward();
+      });
       try {
         final user = await FirebaseService().login(
           _emailController.text.trim(),
@@ -38,16 +71,39 @@ class _LoginScreenState extends State<LoginScreen> {
         );
         if (user != null) {
           Provider.of<UserProvider>(context, listen: false).setUser(user);
+          await showDialog(
+            context: context,
+            builder: (_) => const AnimatedSuccess(message: 'Login Successful!'),
+          );
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
+            PageRouteBuilder(
+              pageBuilder: (_, __, ___) => const HomeScreen(),
+              transitionsBuilder: (_, animation, __, child) {
+                return SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(1.0, 0.0),
+                    end: Offset.zero,
+                  ).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOut)),
+                  child: child,
+                );
+              },
+            ),
           );
         } else {
+          await showDialog(
+            context: context,
+            builder: (_) => const AnimatedFailure(message: 'Invalid email or password'),
+          );
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Invalid email or password')),
           );
         }
       } catch (e) {
+        await showDialog(
+          context: context,
+          builder: (_) => AnimatedFailure(message: 'Error: $e'),
+        );
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e')),
         );
@@ -62,93 +118,194 @@ class _LoginScreenState extends State<LoginScreen> {
     final textTheme = theme.textTheme;
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 36),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Column(
-                      children: [
-                        Text(
-                          "Welcome",
-                          style: textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 28,
-                            color: Colors.deepPurple,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          "Join Companion Connect",
-                          style: textTheme.bodyMedium?.copyWith(
-                            fontSize: 16,
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                  CustomTextField(
-                    label: 'Email',
-                    controller: _emailController,
-                    validator: Helpers.validateEmail,
-                  ),
-                  const SizedBox(height: 20),
-                  CustomTextField(
-                    label: 'Password',
-                    controller: _passwordController,
-                    obscureText: true,
-                    validator: Helpers.validatePassword,
-                  ),
-                  const SizedBox(height: 30),
-                  CustomButton(
-                    text: 'Login',
-                    onPressed: _login,
-                    isLoading: _isLoading,
-                  ),
-                  const SizedBox(height: 30),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text(
-                        "New user? ",
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const RegisterScreen(),
-                            ),
-                          );
-                        },
-                        child: const Text(
-                          "Register the account",
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.deepPurple,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          const CosmicBackground(),
+          Container(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
+                radius: 1.5,
+                center: Alignment.center,
               ),
             ),
           ),
-        ),
+          TheatreCurtain(
+            child: SafeArea(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 36),
+                  child: FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Center(
+                            child: Column(
+                              children: [
+                                AnimatedBuilder(
+                                  animation: _scaleAnimation,
+                                  builder: (context, child) => Transform.scale(
+                                    scale: _scaleAnimation.value,
+                                    child: child,
+                                  ),
+                                  child: Text(
+                                    "Welcome to the Cosmos",
+                                    style: textTheme.titleLarge?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 28,
+                                      color: Colors.white,
+                                      shadows: const [
+                                        Shadow(
+                                          blurRadius: 10.0,
+                                          color: Colors.cyanAccent,
+                                          offset: Offset(0, 0),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                AnimatedBuilder(
+                                  animation: _scaleAnimation,
+                                  builder: (context, child) => Transform.scale(
+                                    scale: _scaleAnimation.value,
+                                    child: child,
+                                  ),
+                                  child: Text(
+                                    "Enter the Companion Connect Galaxy",
+                                    style: textTheme.bodyMedium?.copyWith(
+                                      fontSize: 16,
+                                      color: Colors.white70,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 40),
+                          CosmicProgressBar(
+                            currentStep: _currentStep,
+                            totalSteps: 3,
+                            controller: _progressController,
+                          ),
+                          const SizedBox(height: 20),
+                          AnimatedBuilder(
+                            animation: _scaleAnimation,
+                            builder: (context, child) => Transform.scale(
+                              scale: _scaleAnimation.value,
+                              child: child,
+                            ),
+                            child: CustomTextField(
+                              label: 'Email',
+                              controller: _emailController,
+                              validator: Helpers.validateEmail,
+                              onChanged: (value) {
+                                if (value.isNotEmpty && _currentStep < 1) {
+                                  setState(() {
+                                    _currentStep = 1;
+                                    _progressController.forward();
+                                  });
+                                  _scaleController.forward(from: 0.0);
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          AnimatedBuilder(
+                            animation: _scaleAnimation,
+                            builder: (context, child) => Transform.scale(
+                              scale: _scaleAnimation.value,
+                              child: child,
+                            ),
+                            child: CustomTextField(
+                              label: 'Password',
+                              controller: _passwordController,
+                              obscureText: true,
+                              validator: Helpers.validatePassword,
+                              onChanged: (value) {
+                                if (value.isNotEmpty && _currentStep < 2) {
+                                  setState(() {
+                                    _currentStep = 2;
+                                    _progressController.forward();
+                                  });
+                                  _scaleController.forward(from: 0.0);
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 30),
+                          AnimatedBuilder(
+                            animation: _scaleAnimation,
+                            builder: (context, child) => Transform.scale(
+                              scale: _scaleAnimation.value,
+                              child: child,
+                            ),
+                            child: CustomButton(
+                              text: 'Enter Galaxy',
+                              onPressed: _login,
+                              isLoading: _isLoading,
+                            ),
+                          ),
+                          const SizedBox(height: 30),
+                          AnimatedBuilder(
+                            animation: _scaleAnimation,
+                            builder: (context, child) => Transform.scale(
+                              scale: _scaleAnimation.value,
+                              child: child,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Text(
+                                  "New to the Cosmos? ",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      PageRouteBuilder(
+                                        pageBuilder: (_, __, ___) => const RegisterScreen(),
+                                        transitionsBuilder: (_, animation, __, child) {
+                                          return SlideTransition(
+                                            position: Tween<Offset>(
+                                              begin: const Offset(1.0, 0.0),
+                                              end: Offset.zero,
+                                            ).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOut)),
+                                            child: child,
+                                          );
+                                        },
+                                      ),
+                                    );
+                                  },
+                                  child: const Text(
+                                    "Initiate Registration",
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.cyanAccent,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
