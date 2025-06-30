@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../services/firebase_service.dart';
 import '../widgets/custom_button.dart';
@@ -45,8 +46,9 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     );
     _progressController = AnimationController(vsync: this, duration: const Duration(seconds: 1));
     _fadeController.forward();
+    _scaleController.forward(); // Ensure scale animation completes
 
-    // Add listeners to update progress bar without onChanged
+    // Add listeners to update progress bar
     _emailController.addListener(() {
       if (_emailController.text.isNotEmpty && _currentStep < 1) {
         setState(() {
@@ -78,7 +80,17 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   }
 
   void _login() async {
+    if (kDebugMode) {
+      print('Login button pressed');
+      final emailValid = Helpers.validateEmail(_emailController.text);
+      final passwordValid = Helpers.validatePassword(_passwordController.text);
+      print('Email validation: $emailValid');
+      print('Password validation: $passwordValid');
+    }
     if (_formKey.currentState!.validate()) {
+      if (kDebugMode) {
+        print('Form validated, attempting login');
+      }
       setState(() {
         _isLoading = true;
         _currentStep = _currentStep < 3 ? 3 : _currentStep;
@@ -89,12 +101,18 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           _emailController.text.trim(),
           _passwordController.text.trim(),
         );
+        if (kDebugMode) {
+          print('Login result: user = ${user != null}');
+        }
         if (user != null) {
           Provider.of<UserProvider>(context, listen: false).setUser(user);
           await showDialog(
             context: context,
             builder: (_) => const AnimatedSuccess(message: 'Login Successful!'),
           );
+          if (kDebugMode) {
+            print('Navigating to HomeScreen');
+          }
           Navigator.pushReplacement(
             context,
             PageRouteBuilder(
@@ -111,6 +129,9 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
             ),
           );
         } else {
+          if (kDebugMode) {
+            print('Login failed: Invalid email or password');
+          }
           await showDialog(
             context: context,
             builder: (_) => const AnimatedFailure(message: 'Invalid email or password'),
@@ -120,6 +141,9 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           );
         }
       } catch (e) {
+        if (kDebugMode) {
+          print('Login error: $e');
+        }
         await showDialog(
           context: context,
           builder: (_) => AnimatedFailure(message: 'Error: $e'),
@@ -129,6 +153,10 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         );
       }
       setState(() => _isLoading = false);
+    } else {
+      if (kDebugMode) {
+        print('Form validation failed');
+      }
     }
   }
 
@@ -156,150 +184,179 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
               child: Center(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 36),
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Center(
-                            child: Column(
-                              children: [
-                                AnimatedBuilder(
-                                  animation: _scaleAnimation,
-                                  builder: (context, child) => Transform.scale(
-                                    scale: _scaleAnimation.value,
-                                    child: child,
-                                  ),
-                                  child: Text(
-                                    "Welcome to the Cosmos",
-                                    style: textTheme.titleLarge?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 28,
-                                      color: Colors.white,
-                                      shadows: const [
-                                        Shadow(
-                                          blurRadius: 10.0,
-                                          color: Colors.cyanAccent,
-                                          offset: Offset(0, 0),
-                                        ),
-                                      ],
+                  child: GestureDetector(
+                    // Fallback to ensure taps are detected
+                    onTap: () {
+                      if (kDebugMode) {
+                        print('Form tapped');
+                      }
+                      FocusScope.of(context).unfocus(); // Dismiss keyboard
+                    },
+                    child: FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Center(
+                              child: Column(
+                                children: [
+                                  AnimatedBuilder(
+                                    animation: _scaleAnimation,
+                                    builder: (context, child) => Transform.scale(
+                                      scale: _scaleAnimation.value,
+                                      child: child,
+                                    ),
+                                    child: Text(
+                                      "Welcome to the Cosmos",
+                                      style: textTheme.titleLarge?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 28,
+                                        color: Colors.white,
+                                        shadows: const [
+                                          Shadow(
+                                            blurRadius: 10.0,
+                                            color: Colors.cyanAccent,
+                                            offset: Offset(0, 0),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                ),
-                                const SizedBox(height: 6),
-                                AnimatedBuilder(
-                                  animation: _scaleAnimation,
-                                  builder: (context, child) => Transform.scale(
-                                    scale: _scaleAnimation.value,
-                                    child: child,
+                                  const SizedBox(height: 6),
+                                  AnimatedBuilder(
+                                    animation: _scaleAnimation,
+                                    builder: (context, child) => Transform.scale(
+                                      scale: _scaleAnimation.value,
+                                      child: child,
+                                    ),
+                                    child: Text(
+                                      "Enter the Companion Connect Galaxy",
+                                      style: textTheme.bodyMedium?.copyWith(
+                                        fontSize: 16,
+                                        color: Colors.white70,
+                                      ),
+                                    ),
                                   ),
-                                  child: Text(
-                                    "Enter the Companion Connect Galaxy",
-                                    style: textTheme.bodyMedium?.copyWith(
-                                      fontSize: 16,
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 40),
+                            CosmicProgressBar(
+                              currentStep: _currentStep,
+                              totalSteps: 3,
+                              controller: _progressController,
+                            ),
+                            const SizedBox(height: 20),
+                            AnimatedBuilder(
+                              animation: _scaleAnimation,
+                              builder: (context, child) => Transform.scale(
+                                scale: _scaleAnimation.value,
+                                child: child,
+                              ),
+                              child: CustomTextField(
+                                label: 'Email',
+                                controller: _emailController,
+                                validator: (value) {
+                                  final result = Helpers.validateEmail(value);
+                                  if (kDebugMode) {
+                                    print('Email validator result: $result');
+                                  }
+                                  return result;
+                                },
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            AnimatedBuilder(
+                              animation: _scaleAnimation,
+                              builder: (context, child) => Transform.scale(
+                                scale: _scaleAnimation.value,
+                                child: child,
+                              ),
+                              child: CustomTextField(
+                                label: 'Password',
+                                controller: _passwordController,
+                                obscureText: true,
+                                validator: (value) {
+                                  final result = Helpers.validatePassword(value);
+                                  if (kDebugMode) {
+                                    print('Password validator result: $result');
+                                  }
+                                  return result;
+                                },
+                              ),
+                            ),
+                            const SizedBox(height: 30),
+                            AnimatedBuilder(
+                              animation: _scaleAnimation,
+                              builder: (context, child) => Transform.scale(
+                                scale: _scaleAnimation.value,
+                                child: child,
+                              ),
+                              child: CustomButton(
+                                text: 'Enter Galaxy',
+                                onPressed: () {
+                                  if (kDebugMode) {
+                                    print('Enter Galaxy button tapped');
+                                  }
+                                  _login();
+                                },
+                                isLoading: _isLoading,
+                              ),
+                            ),
+                            const SizedBox(height: 30),
+                            AnimatedBuilder(
+                              animation: _scaleAnimation,
+                              builder: (context, child) => Transform.scale(
+                                scale: _scaleAnimation.value,
+                                child: child,
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Text(
+                                    "New to the Cosmos? ",
+                                    style: TextStyle(
+                                      fontSize: 14,
                                       color: Colors.white70,
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 40),
-                          CosmicProgressBar(
-                            currentStep: _currentStep,
-                            totalSteps: 3,
-                            controller: _progressController,
-                          ),
-                          const SizedBox(height: 20),
-                          AnimatedBuilder(
-                            animation: _scaleAnimation,
-                            builder: (context, child) => Transform.scale(
-                              scale: _scaleAnimation.value,
-                              child: child,
-                            ),
-                            child: CustomTextField(
-                              label: 'Email',
-                              controller: _emailController,
-                              validator: Helpers.validateEmail,
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          AnimatedBuilder(
-                            animation: _scaleAnimation,
-                            builder: (context, child) => Transform.scale(
-                              scale: _scaleAnimation.value,
-                              child: child,
-                            ),
-                            child: CustomTextField(
-                              label: 'Password',
-                              controller: _passwordController,
-                              obscureText: true,
-                              validator: Helpers.validatePassword,
-                            ),
-                          ),
-                          const SizedBox(height: 30),
-                          AnimatedBuilder(
-                            animation: _scaleAnimation,
-                            builder: (context, child) => Transform.scale(
-                              scale: _scaleAnimation.value,
-                              child: child,
-                            ),
-                            child: CustomButton(
-                              text: 'Enter Galaxy',
-                              onPressed: _login,
-                              isLoading: _isLoading,
-                            ),
-                          ),
-                          const SizedBox(height: 30),
-                          AnimatedBuilder(
-                            animation: _scaleAnimation,
-                            builder: (context, child) => Transform.scale(
-                              scale: _scaleAnimation.value,
-                              child: child,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Text(
-                                  "New to the Cosmos? ",
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.white70,
-                                  ),
-                                ),
-                                TextButton(
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      PageRouteBuilder(
-                                        pageBuilder: (_, __, ___) => const RegisterScreen(),
-                                        transitionsBuilder: (_, animation, __, child) {
-                                          return SlideTransition(
-                                            position: Tween<Offset>(
-                                              begin: const Offset(1.0, 0.0),
-                                              end: Offset.zero,
-                                            ).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOut)),
-                                            child: child,
-                                          );
-                                        },
+                                  TextButton(
+                                    onPressed: () {
+                                      if (kDebugMode) {
+                                        print('Initiate Registration button tapped');
+                                      }
+                                      Navigator.push(
+                                        context,
+                                        PageRouteBuilder(
+                                          pageBuilder: (_, __, ___) => const RegisterScreen(),
+                                          transitionsBuilder: (_, animation, __, child) {
+                                            return SlideTransition(
+                                              position: Tween<Offset>(
+                                                begin: const Offset(1.0, 0.0),
+                                                end: Offset.zero,
+                                              ).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOut)),
+                                              child: child,
+                                            );
+                                          },
+                                        ),
+                                      );
+                                    },
+                                    child: const Text(
+                                      "Initiate Registration",
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.cyanAccent,
                                       ),
-                                    );
-                                  },
-                                  child: const Text(
-                                    "Initiate Registration",
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.cyanAccent,
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
