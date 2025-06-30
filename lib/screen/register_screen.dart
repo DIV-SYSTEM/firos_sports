@@ -15,10 +15,10 @@ import '../model/user_model.dart';
 import '../providers/user_provider.dart';
 import '../utils/helpers.dart';
 import 'home_screen.dart';
-import 'cosmic_background.dart';
-import 'progress_bar.dart';
-import 'animated_success.dart';
-import 'animated_failure.dart';
+import './cosmic_background.dart';
+import './cosmic_progress_bar.dart';
+import './animated_success.dart';
+import './animated_failure.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -107,7 +107,7 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
       if (pickedFile != null) {
         setState(() {
           _documentImage = pickedFile;
-          _currentStep = 3;
+          _currentStep = _currentStep < 3 ? 3 : _currentStep;
           _progressController.forward();
         });
         if (kDebugMode) {
@@ -133,7 +133,7 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
     if (pickedFile != null) {
       setState(() {
         _liveImage = pickedFile;
-        _currentStep = 4;
+        _currentStep = _currentStep < 4 ? 4 : _currentStep;
         _progressController.forward();
       });
       if (kDebugMode) {
@@ -181,7 +181,8 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
 
     setState(() {
       _isMatching = true;
-      _currentStep = 5;
+      _currentStep = _currentStep < 5 ? 5 : _currentStep;
+      _progressController.forward();
     });
 
     try {
@@ -214,7 +215,7 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
         setState(() {
           _dob = data['dob'];
           _matchedAge = _extractAgeFromDOB(_dob!);
-          _currentStep = 6;
+          _currentStep = _currentStep < 6 ? 6 : _currentStep;
           _progressController.forward();
         });
         showDialog(
@@ -244,7 +245,8 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
     if (_formKey.currentState!.validate() && _matchedAge != null && _liveImage != null) {
       setState(() {
         _isRegistering = true;
-        _currentStep = 7;
+        _currentStep = _currentStep < 7 ? 7 : _currentStep;
+        _progressController.forward();
       });
       try {
         final imageFile = File(_liveImage!.path);
@@ -293,21 +295,6 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
     }
   }
 
-  void _updateStep() {
-    setState(() {
-      if (_nameController.text.isNotEmpty &&
-          _emailController.text.isNotEmpty &&
-          _passwordController.text.isNotEmpty) {
-        _currentStep = 2;
-      } else if (_nameController.text.isNotEmpty || _emailController.text.isNotEmpty) {
-        _currentStep = 1;
-      } else {
-        _currentStep = 0;
-      }
-      _progressController.forward();
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -318,11 +305,7 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
             fontWeight: FontWeight.bold,
             color: Colors.white,
             shadows: [
-              Shadow(
-                blurRadius: 10.0,
-                color: Colors.cyanAccent,
-                offset: Offset(0, 0),
-              ),
+              Shadow(blurRadius: 10.0, color: Colors.cyanAccent, offset: Offset(0, 0)),
             ],
           ),
         ),
@@ -331,7 +314,7 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
       ),
       body: Stack(
         children: [
-          CosmicBackground(),
+          const CosmicBackground(),
           Container(
             decoration: BoxDecoration(
               gradient: RadialGradient(
@@ -391,7 +374,7 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
                           if (value != null) {
                             setState(() {
                               _selectedDocType = value;
-                              _currentStep = 1;
+                              _currentStep = _currentStep < 1 ? 1 : _currentStep;
                               _progressController.forward();
                             });
                             _scaleController.forward(from: 0.0);
@@ -400,26 +383,44 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
                       ),
                     ),
                     const SizedBox(height: 16),
-                    CustomTextField(
-                      label: 'Name',
-                      controller: _nameController,
-                      validator: Helpers.validateName,
-                      onChanged: (_) => _updateStep(),
+                    AnimatedBuilder(
+                      animation: _scaleAnimation,
+                      builder: (context, child) => Transform.scale(
+                        scale: _scaleAnimation.value,
+                        child: child,
+                      ),
+                      child: CustomTextField(
+                        label: 'Name',
+                        controller: _nameController,
+                        validator: Helpers.validateName,
+                      ),
                     ),
                     const SizedBox(height: 16),
-                    CustomTextField(
-                      label: 'Email',
-                      controller: _emailController,
-                      validator: Helpers.validateEmail,
-                      onChanged: (_) => _updateStep(),
+                    AnimatedBuilder(
+                      animation: _scaleAnimation,
+                      builder: (context, child) => Transform.scale(
+                        scale: _scaleAnimation.value,
+                        child: child,
+                      ),
+                      child: CustomTextField(
+                        label: 'Email',
+                        controller: _emailController,
+                        validator: Helpers.validateEmail,
+                      ),
                     ),
                     const SizedBox(height: 16),
-                    CustomTextField(
-                      label: 'Password',
-                      controller: _passwordController,
-                      obscureText: true,
-                      validator: Helpers.validatePassword,
-                      onChanged: (_) => _updateStep(),
+                    AnimatedBuilder(
+                      animation: _scaleAnimation,
+                      builder: (context, child) => Transform.scale(
+                        scale: _scaleAnimation.value,
+                        child: child,
+                      ),
+                      child: CustomTextField(
+                        label: 'Password',
+                        controller: _passwordController,
+                        obscureText: true,
+                        validator: Helpers.validatePassword,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     AnimatedBuilder(
