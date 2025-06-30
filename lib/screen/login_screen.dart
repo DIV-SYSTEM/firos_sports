@@ -45,6 +45,26 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     );
     _progressController = AnimationController(vsync: this, duration: const Duration(seconds: 1));
     _fadeController.forward();
+
+    // Add listeners to update progress bar without onChanged
+    _emailController.addListener(() {
+      if (_emailController.text.isNotEmpty && _currentStep < 1) {
+        setState(() {
+          _currentStep = 1;
+          _progressController.forward();
+        });
+        _scaleController.forward(from: 0.0);
+      }
+    });
+    _passwordController.addListener(() {
+      if (_passwordController.text.isNotEmpty && _currentStep < 2) {
+        setState(() {
+          _currentStep = 2;
+          _progressController.forward();
+        });
+        _scaleController.forward(from: 0.0);
+      }
+    });
   }
 
   @override
@@ -203,15 +223,6 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                               label: 'Email',
                               controller: _emailController,
                               validator: Helpers.validateEmail,
-                              onChanged: (value) {
-                                if (value.isNotEmpty && _currentStep < 1) {
-                                  setState(() {
-                                    _currentStep = 1;
-                                    _progressController.forward();
-                                  });
-                                  _scaleController.forward(from: 0.0);
-                                }
-                              },
                             ),
                           ),
                           const SizedBox(height: 20),
@@ -226,15 +237,6 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                               controller: _passwordController,
                               obscureText: true,
                               validator: Helpers.validatePassword,
-                              onChanged: (value) {
-                                if (value.isNotEmpty && _currentStep < 2) {
-                                  setState(() {
-                                    _currentStep = 2;
-                                    _progressController.forward();
-                                  });
-                                  _scaleController.forward(from: 0.0);
-                                }
-                              },
                             ),
                           ),
                           const SizedBox(height: 30),
