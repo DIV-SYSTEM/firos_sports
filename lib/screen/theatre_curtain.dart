@@ -39,10 +39,13 @@ class _TheatreCurtainState extends State<TheatreCurtain> with TickerProviderStat
         AnimatedBuilder(
           animation: _animation,
           builder: (context, child) {
-            return CustomPaint(
-              size: Size.infinite,
-              painter: CurtainPainter(_animation.value),
-            );
+            // Only draw the curtain if the animation is not complete
+            return _animation.value < 1.0
+                ? CustomPaint(
+                    size: Size.infinite,
+                    painter: CurtainPainter(_animation.value),
+                  )
+                : const SizedBox.shrink();
           },
         ),
       ],
@@ -110,4 +113,7 @@ class CurtainPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(CurtainPainter oldDelegate) => true;
+
+  @override
+  bool hitTest(Offset position) => false; // Prevent painter from blocking taps
 }
