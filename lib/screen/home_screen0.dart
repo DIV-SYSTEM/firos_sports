@@ -1,4 +1,3 @@
-// ... your existing imports
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -225,7 +224,14 @@ class _SportMainScreenState extends State<SportMainScreen> {
           ),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 4),
-            child: Text("Filters", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            child: Text(
+              "Filters",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Colors.blueAccent,
+              ),
+            ),
           ),
           Expanded(
             child: ListView(
@@ -235,49 +241,102 @@ class _SportMainScreenState extends State<SportMainScreen> {
                   DropdownButtonFormField(
                     value: selectedCity,
                     items: cityOptions
-                        .map((val) => DropdownMenuItem(value: val, child: Text(val)))
+                        .map((val) => DropdownMenuItem(
+                              value: val,
+                              child: Text(
+                                val,
+                                style: const TextStyle(color: Colors.blueGrey),
+                              ),
+                            ))
                         .toList(),
                     onChanged: (val) => setState(() => selectedCity = val),
-                    decoration: const InputDecoration(labelText: 'City'),
+                    decoration: const InputDecoration(
+                      labelText: 'City',
+                      labelStyle: TextStyle(color: Colors.blueAccent),
+                      prefixIcon: Icon(Icons.location_city, color: Colors.blueAccent),
+                    ),
                   ),
                 DropdownButtonFormField(
                   value: selectedSport,
                   items: sportOptions
-                      .map((val) => DropdownMenuItem(value: val, child: Text(val)))
+                      .map((val) => DropdownMenuItem(
+                            value: val,
+                            child: Text(
+                              val,
+                              style: const TextStyle(color: Colors.blueGrey),
+                            ),
+                          ))
                       .toList(),
                   onChanged: (val) => setState(() => selectedSport = val),
-                  decoration: const InputDecoration(labelText: 'Sport'),
+                  decoration: const InputDecoration(
+                    labelText: 'Sport',
+                    labelStyle: TextStyle(color: Colors.blueAccent),
+                    prefixIcon: Icon(Icons.sports, color: Colors.blueAccent),
+                  ),
                 ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField(
                   value: gender,
                   items: ['All', 'Male', 'Female']
-                      .map((val) => DropdownMenuItem(value: val, child: Text(val)))
+                      .map((val) => DropdownMenuItem(
+                            value: val,
+                            child: Text(
+                              val,
+                              style: const TextStyle(color: Colors.blueGrey),
+                            ),
+                          ))
                       .toList(),
                   onChanged: (val) => setState(() => gender = val!),
-                  decoration: const InputDecoration(labelText: 'Gender'),
+                  decoration: const InputDecoration(
+                    labelText: 'Gender',
+                    labelStyle: TextStyle(color: Colors.blueAccent),
+                    prefixIcon: Icon(Icons.person, color: Colors.blueAccent),
+                  ),
                 ),
                 DropdownButtonFormField(
                   value: age,
                   items: ['All', '18-25', '26-33', '34-40', '40+']
-                      .map((val) => DropdownMenuItem(value: val, child: Text(val)))
+                      .map((val) => DropdownMenuItem(
+                            value: val,
+                            child: Text(
+                              val,
+                              style: const TextStyle(color: Colors.blueGrey),
+                            ),
+                          ))
                       .toList(),
                   onChanged: (val) => setState(() => age = val!),
-                  decoration: const InputDecoration(labelText: 'Age Limit'),
+                  decoration: const InputDecoration(
+                    labelText: 'Age Limit',
+                    labelStyle: TextStyle(color: Colors.blueAccent),
+                    prefixIcon: Icon(Icons.cake, color: Colors.blueAccent),
+                  ),
                 ),
                 DropdownButtonFormField(
                   value: type,
                   items: ['All', 'Paid', 'Unpaid']
-                      .map((val) => DropdownMenuItem(value: val, child: Text(val)))
+                      .map((val) => DropdownMenuItem(
+                            value: val,
+                            child: Text(
+                              val,
+                              style: const TextStyle(color: Colors.blueGrey),
+                            ),
+                          ))
                       .toList(),
                   onChanged: (val) => setState(() => type = val!),
-                  decoration: const InputDecoration(labelText: 'Type'),
+                  decoration: const InputDecoration(
+                    labelText: 'Type',
+                    labelStyle: TextStyle(color: Colors.blueAccent),
+                    prefixIcon: Icon(Icons.payment, color: Colors.blueAccent),
+                  ),
                 ),
                 ListTile(
-                  title: Text(selectedDate != null
-                      ? "Date: ${DateFormat('yyyy-MM-dd').format(selectedDate!)}"
-                      : "Select Date"),
-                  trailing: const Icon(Icons.calendar_today),
+                  title: Text(
+                    selectedDate != null
+                        ? "Date: ${DateFormat('yyyy-MM-dd').format(selectedDate!)}"
+                        : "Select Date",
+                    style: const TextStyle(color: Colors.blueAccent),
+                  ),
+                  trailing: const Icon(Icons.calendar_today, color: Colors.blueAccent),
                   onTap: () async {
                     final picked = await showDatePicker(
                       context: context,
@@ -288,7 +347,10 @@ class _SportMainScreenState extends State<SportMainScreen> {
                     if (picked != null) setState(() => selectedDate = picked);
                   },
                 ),
-                Text("Distance: ${distance.toInt()} km"),
+                Text(
+                  "Distance: ${distance.toInt()} km",
+                  style: const TextStyle(color: Colors.blueAccent),
+                ),
                 Slider(
                   value: distance,
                   min: 0,
