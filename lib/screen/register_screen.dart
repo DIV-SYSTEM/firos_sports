@@ -15,6 +15,10 @@ import '../model/user_model.dart';
 import '../providers/user_provider.dart';
 import '../utils/helpers.dart';
 import 'home_screen.dart';
+import 'cosmic_background.dart';
+import 'progress_bar.dart';
+import 'animated_success.dart';
+import 'animated_failure.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -23,7 +27,7 @@ class RegisterScreen extends StatefulWidget {
   _RegisterScreenState createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -35,15 +39,39 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? _dob;
   int? _matchedAge;
   String _selectedDocType = 'Aadhaar';
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
+  late AnimationController _scaleController;
+  late Animation<double> _scaleAnimation;
+  late AnimationController _progressController;
+  int _currentStep = 0;
 
   final String aadhaarApiUrl = 'https://1520-180-151-25-86.ngrok-free.app/api/verify/aadhaar/';
   final String panApiUrl = 'https://1520-180-151-25-86.ngrok-free.app/api/verify/pan/';
+
+  @override
+  void initState() {
+    super.initState();
+    _fadeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    );
+    _scaleController = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _scaleController, curve: Curves.easeOutBack),
+    );
+    _progressController = AnimationController(vsync: this, duration: const Duration(seconds: 1));
+    _fadeController.forward();
+  }
 
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _fadeController.dispose();
+    _scaleController.dispose();
+    _progressController.dispose();
     super.dispose();
   }
 
@@ -77,10 +105,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
         maxHeight: 1080,
       );
       if (pickedFile != null) {
-        setState(() => _documentImage = pickedFile);
+        setState(() {
+          _documentImage = pickedFile;
+          _currentStep = 3;
+          _progressController.forward();
+        });
         if (kDebugMode) {
           print('Document image selected: ${pickedFile.path}');
         }
+        _scaleController.forward(from: 0.0);
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -98,10 +131,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
       maxHeight: 1080,
     );
     if (pickedFile != null) {
-      setState(() => _liveImage = pickedFile);
+      setState(() {
+        _liveImage = pickedFile;
+        _currentStep = 4;
+        _progressController.forward();
+      });
       if (kDebugMode) {
         print('Live image selected: ${pickedFile.path}');
       }
+      _scaleController.forward(from: 0.0);
     } else if (!kIsWeb) {
       final status = await Permission.camera.request();
       if (!status.isGranted) {
@@ -141,7 +179,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    setState(() => _isMatching = true);
+    setState(() {
+      _isMatching = true;
+      _currentStep = 5;
+    });
 
     try {
       final apiUrl = _selectedDocType == 'Aadhaar' ? aadhaarApiUrl : panApiUrl;
@@ -173,28 +214,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
         setState(() {
           _dob = data['dob'];
           _matchedAge = _extractAgeFromDOB(_dob!);
+          _currentStep = 6;
+          _progressController.forward();
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Face matched! Age: $_matchedAge')),
+        showDialog(
+          context: context,
+          builder: (_) => AnimatedSuccess(age: _matchedAge!),
         );
       } else {
         showDialog(
           context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('Verification Failed'),
-            content: Text(data['message'] ?? 'Unknown error'),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK')),
-            ],
-          ),
+          builder: (_) => AnimatedFailure(message: data['message'] ?? 'Unknown error'),
         );
       }
     } catch (e) {
       if (kDebugMode) {
         print('Error in _matchImages: $e');
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+      showDialog(
+        context: context,
+        builder: (_) => AnimatedFailure(message: 'Error: $e'),
       );
     }
 
@@ -203,7 +242,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _register() async {
     if (_formKey.currentState!.validate() && _matchedAge != null && _liveImage != null) {
-      setState(() => _isRegistering = true);
+      setState(() {
+        _isRegistering = true;
+        _currentStep = 7;
+      });
       try {
         final imageFile = File(_liveImage!.path);
         final bytes = await imageFile.readAsBytes();
@@ -222,7 +264,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
         Provider.of<UserProvider>(context, listen: false).setUser(user);
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) => const HomeScreen(),
+            transitionsBuilder: (_, animation, __, child) {
+              return SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(1.0, 0.0),
+                  end: Offset.zero,
+                ).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOut)),
+                child: child,
+              );
+            },
+          ),
         );
       } catch (e) {
         if (kDebugMode) {
@@ -240,98 +293,259 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
+  void _updateStep() {
+    setState(() {
+      if (_nameController.text.isNotEmpty &&
+          _emailController.text.isNotEmpty &&
+          _passwordController.text.isNotEmpty) {
+        _currentStep = 2;
+      } else if (_nameController.text.isNotEmpty || _emailController.text.isNotEmpty) {
+        _currentStep = 1;
+      } else {
+        _currentStep = 0;
+      }
+      _progressController.forward();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Register')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              DropdownButtonFormField<String>(
-                value: _selectedDocType,
-                decoration: const InputDecoration(labelText: 'Choose Document Type'),
-                items: const [
-                  DropdownMenuItem(value: 'Aadhaar', child: Text('Aadhaar')),
-                  DropdownMenuItem(value: 'PAN', child: Text('PAN')),
-                ],
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() => _selectedDocType = value);
-                  }
-                },
-              ),
-              const SizedBox(height: 16),
-              CustomTextField(
-                label: 'Name',
-                controller: _nameController,
-                validator: Helpers.validateName,
-              ),
-              const SizedBox(height: 16),
-              CustomTextField(
-                label: 'Email',
-                controller: _emailController,
-                validator: Helpers.validateEmail,
-              ),
-              const SizedBox(height: 16),
-              CustomTextField(
-                label: 'Password',
-                controller: _passwordController,
-                obscureText: true,
-                validator: Helpers.validatePassword,
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  CustomButton(
-                    text: 'Upload $_selectedDocType',
-                    onPressed: _pickDocumentImage,
-                  ),
-                  CustomButton(
-                    text: 'Capture Live Photo',
-                    onPressed: _pickLiveImage,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              if (_documentImage != null) Text('$_selectedDocType Image Selected'),
-              if (_liveImage != null) const Text('Live Photo Selected'),
-              const SizedBox(height: 16),
-              CustomButton(
-                text: 'Match Images',
-                onPressed: _matchImages,
-                isLoading: _isMatching,
-              ),
-              const SizedBox(height: 16),
-              CustomButton(
-                text: 'Register',
-                onPressed: _register,
-                isLoading: _isRegistering,
-              ),
-              const SizedBox(height: 16),
-              CustomButton(
-                text: 'Skip to HomeScreen',
-                onPressed: () {
-                  final user = UserModel(
-                    id: const Uuid().v4(),
-                    name: 'Dummy User',
-                    email: 'dummy@example.com',
-                    password: 'DummyPass123!',
-                    age: 35,
-                  );
-                  Provider.of<UserProvider>(context, listen: false).setUser(user);
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const HomeScreen()),
-                  );
-                },
+      appBar: AppBar(
+        title: const Text(
+          'Initiate Identity Protocol',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            shadows: [
+              Shadow(
+                blurRadius: 10.0,
+                color: Colors.cyanAccent,
+                offset: Offset(0, 0),
               ),
             ],
           ),
         ),
+        backgroundColor: Colors.black,
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          CosmicBackground(),
+          Container(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
+                radius: 1.5,
+                center: Alignment.center,
+              ),
+            ),
+          ),
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    const SizedBox(height: 16),
+                    CosmicProgressBar(
+                      currentStep: _currentStep,
+                      totalSteps: 7,
+                      controller: _progressController,
+                    ),
+                    const SizedBox(height: 16),
+                    AnimatedBuilder(
+                      animation: _scaleAnimation,
+                      builder: (context, child) => Transform.scale(
+                        scale: _scaleAnimation.value,
+                        child: child,
+                      ),
+                      child: DropdownButtonFormField<String>(
+                        value: _selectedDocType,
+                        decoration: InputDecoration(
+                          labelText: 'Select Document Type',
+                          labelStyle: const TextStyle(color: Colors.white70),
+                          filled: true,
+                          fillColor: Colors.white.withOpacity(0.1),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Colors.cyan, width: 2),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Colors.cyan, width: 2),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Colors.cyanAccent, width: 3),
+                          ),
+                        ),
+                        dropdownColor: Colors.black87,
+                        items: const [
+                          DropdownMenuItem(value: 'Aadhaar', child: Text('Aadhaar', style: TextStyle(color: Colors.white))),
+                          DropdownMenuItem(value: 'PAN', child: Text('PAN', style: TextStyle(color: Colors.white))),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() {
+                              _selectedDocType = value;
+                              _currentStep = 1;
+                              _progressController.forward();
+                            });
+                            _scaleController.forward(from: 0.0);
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    CustomTextField(
+                      label: 'Name',
+                      controller: _nameController,
+                      validator: Helpers.validateName,
+                      onChanged: (_) => _updateStep(),
+                    ),
+                    const SizedBox(height: 16),
+                    CustomTextField(
+                      label: 'Email',
+                      controller: _emailController,
+                      validator: Helpers.validateEmail,
+                      onChanged: (_) => _updateStep(),
+                    ),
+                    const SizedBox(height: 16),
+                    CustomTextField(
+                      label: 'Password',
+                      controller: _passwordController,
+                      obscureText: true,
+                      validator: Helpers.validatePassword,
+                      onChanged: (_) => _updateStep(),
+                    ),
+                    const SizedBox(height: 16),
+                    AnimatedBuilder(
+                      animation: _scaleAnimation,
+                      builder: (context, child) => Transform.scale(
+                        scale: _scaleAnimation.value,
+                        child: child,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          CustomButton(
+                            text: 'Scan $_selectedDocType',
+                            onPressed: _pickDocumentImage,
+                          ),
+                          CustomButton(
+                            text: 'Authorize Biometrics',
+                            onPressed: _pickLiveImage,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (_documentImage != null)
+                      AnimatedBuilder(
+                        animation: _scaleAnimation,
+                        builder: (context, child) => Transform.scale(
+                          scale: _scaleAnimation.value,
+                          child: child,
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            gradient: LinearGradient(
+                              colors: [Colors.cyan.withOpacity(0.3), Colors.blue.withOpacity(0.3)],
+                            ),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.cyanAccent,
+                                blurRadius: 10,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            '$_selectedDocType Scanned',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                    if (_liveImage != null)
+                      AnimatedBuilder(
+                        animation: _scaleAnimation,
+                        builder: (context, child) => Transform.scale(
+                          scale: _scaleAnimation.value,
+                          child: child,
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            gradient: LinearGradient(
+                              colors: [Colors.cyan.withOpacity(0.3), Colors.blue.withOpacity(0.3)],
+                            ),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.cyanAccent,
+                                blurRadius: 10,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: const Text(
+                            'Biometrics Authorized',
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 16),
+                    CustomButton(
+                      text: 'Verify Identity',
+                      onPressed: _matchImages,
+                      isLoading: _isMatching,
+                    ),
+                    const SizedBox(height: 16),
+                    CustomButton(
+                      text: 'Confirm Registration',
+                      onPressed: _register,
+                      isLoading: _isRegistering,
+                    ),
+                    const SizedBox(height: 16),
+                    CustomButton(
+                      text: 'Bypass Protocol',
+                      onPressed: () {
+                        final user = UserModel(
+                          id: const Uuid().v4(),
+                          name: 'Dummy User',
+                          email: 'dummy@example.com',
+                          password: 'DummyPass123!',
+                          age: 35,
+                        );
+                        Provider.of<UserProvider>(context, listen: false).setUser(user);
+                        Navigator.pushReplacement(
+                          context,
+                          PageRouteBuilder(
+                            pageBuilder: (_, __, ___) => const HomeScreen(),
+                            transitionsBuilder: (_, animation, __, child) {
+                              return SlideTransition(
+                                position: Tween<Offset>(
+                                  begin: const Offset(1.0, 0.0),
+                                  end: Offset.zero,
+                                ).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOut)),
+                                child: child,
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
