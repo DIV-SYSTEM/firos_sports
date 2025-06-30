@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 
 class AnimatedSuccess extends StatefulWidget {
   final int age;
@@ -45,7 +46,7 @@ class _AnimatedSuccessState extends State<AnimatedSuccess> with TickerProviderSt
             animation: _controller,
             builder: (context, child) {
               return CustomPaint(
-                size: Size(300, 300),
+                size: const Size(300, 300),
                 painter: SupernovaPainter(_controller.value),
               );
             },
@@ -139,10 +140,10 @@ class SupernovaPainter extends CustomPainter {
       ..color = Colors.white.withOpacity(0.8 * (1 - animationValue))
       ..style = PaintingStyle.fill;
     for (int i = 0; i < 20; i++) {
-      final angle = 2 * 3.14159 * i / 20 + animationValue * 2 * 3.14159;
+      final angle = 2 * math.pi * i / 20 + animationValue * 2 * math.pi;
       final radius = 50 * animationValue + i * 5;
-      final x = center.dx + radius * (angle.cos());
-      final y = center.dy + radius * (angle.sin());
+      final x = center.dx + radius * math.cos(angle);
+      final y = center.dy + radius * math.sin(angle);
       canvas.drawCircle(Offset(x, y), 3.0, particlePaint);
     }
   }
