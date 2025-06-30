@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 
 class CosmicBackground extends StatefulWidget {
   const CosmicBackground({super.key});
@@ -53,14 +54,13 @@ class CosmicPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), paint);
 
-    // Draw stars
     final starPaint = Paint()
       ..color = Colors.white.withOpacity(0.8)
       ..style = PaintingStyle.fill;
     for (int i = 0; i < 50; i++) {
       final x = (i * 37 % size.width);
       final y = (i * 53 % size.height);
-      final opacity = (0.5 + 0.5 * (animationValue + i / 50)).clamp(0.0, 1.0);
+      final opacity = (0.5 + 0.5 * math.sin(animationValue * 2 * math.pi + i / 50)).clamp(0.0, 1.0);
       canvas.drawCircle(
         Offset(x, y),
         2.0 * (i % 3 + 1),
@@ -68,12 +68,11 @@ class CosmicPainter extends CustomPainter {
       );
     }
 
-    // Draw comet
     final cometPaint = Paint()
       ..color = Colors.cyanAccent.withOpacity(0.7)
       ..style = PaintingStyle.fill;
     final cometX = size.width * (animationValue % 1.0);
-    final cometY = size.height * 0.3 + 50 * (animationValue % 1.0);
+    final cometY = size.height * 0.3 + 50 * math.sin(animationValue * 2 * math.pi);
     canvas.drawCircle(Offset(cometX, cometY), 5.0, cometPaint);
     final tailPaint = Paint()
       ..color = Colors.cyanAccent.withOpacity(0.3)
