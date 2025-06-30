@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 
 class AnimatedFailure extends StatefulWidget {
   final String message;
@@ -41,7 +42,7 @@ class _AnimatedFailureState extends State<AnimatedFailure> with TickerProviderSt
             animation: _controller,
             builder: (context, child) {
               return CustomPaint(
-                size: Size(300, 300),
+                size: const Size(300, 300),
                 painter: RainPainter(_controller.value),
               );
             },
@@ -84,6 +85,7 @@ class _AnimatedFailureState extends State<AnimatedFailure> with TickerProviderSt
                             ),
                           ],
                         ),
+                        textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton(
@@ -132,7 +134,6 @@ class RainPainter extends CustomPainter {
       );
     }
 
-    // Draw sad face
     final facePaint = Paint()
       ..color = Colors.white.withOpacity(0.8)
       ..style = PaintingStyle.stroke
