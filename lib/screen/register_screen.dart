@@ -46,8 +46,8 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
   late AnimationController _progressController;
   int _currentStep = 0;
 
-  final String aadhaarApiUrl = 'https://1520-180-151-25-86.ngrok-free.app/api/verify/aadhaar/';
-  final String panApiUrl = 'https://1520-180-151-25-86.ngrok-free.app/api/verify/pan/';
+  final String aadhaarApiUrl = 'http://3.219.45.128/api/verify/aadhaar/';
+  final String panApiUrl = 'http://3.219.45.128/api/verify/pan/';
 
   @override
   void initState() {
