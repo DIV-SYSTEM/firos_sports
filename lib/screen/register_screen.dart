@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -15,10 +16,10 @@ import '../model/user_model.dart';
 import '../providers/user_provider.dart';
 import '../utils/helpers.dart';
 import 'home_screen.dart';
-import './cosmic_background.dart';
-import './cosmic_progress_bar.dart';
-import './animated_success.dart';
-import './animated_failure.dart';
+import 'cosmic_background.dart';
+import 'cosmic_progress_bar.dart';
+import 'animated_success1.dart';
+import 'animated_failure.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -62,6 +63,7 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
     );
     _progressController = AnimationController(vsync: this, duration: const Duration(seconds: 1));
     _fadeController.forward();
+    _scaleController.repeat(reverse: true); // For fingerprint pulse effect
   }
 
   @override
@@ -432,13 +434,75 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          CustomButton(
-                            text: 'Scan $_selectedDocType',
-                            onPressed: _pickDocumentImage,
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Container(
+                                decoration: const BoxDecoration(
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.cyanAccent,
+                                      blurRadius: 5,
+                                      spreadRadius: 1,
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(
+                                  Icons.document_scanner,
+                                  color: Colors.white,
+                                  size: 24.0,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              CustomButton(
+                                text: 'Scan $_selectedDocType',
+                                onPressed: () {
+                                  if (kDebugMode) {
+                                    print('Scan $_selectedDocType button tapped');
+                                  }
+                                  _pickDocumentImage();
+                                },
+                              ),
+                            ],
                           ),
-                          CustomButton(
-                            text: 'Authorize Biometrics',
-                            onPressed: _pickLiveImage,
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Container(
+                                decoration: const BoxDecoration(
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.cyanAccent,
+                                      blurRadius: 5,
+                                      spreadRadius: 1,
+                                    ),
+                                  ],
+                                ),
+                                child: AnimatedBuilder(
+                                  animation: _scaleController,
+                                  builder: (context, child) => Transform.scale(
+                                    scale: 0.9 + 0.2 * (0.5 * (1 + sin(_scaleController.value * 2 * pi))),
+                                    child: const Icon(
+                                      Icons.fingerprint,
+                                      color: Colors.cyanAccent,
+                                      size: 24.0,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              CustomButton(
+                                text: 'Authorize Biometrics',
+                                onPressed: () {
+                                  if (kDebugMode) {
+                                    print('Authorize Biometrics button tapped');
+                                  }
+                                  _pickLiveImage();
+                                },
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -501,45 +565,127 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
                         ),
                       ),
                     const SizedBox(height: 16),
-                    CustomButton(
-                      text: 'Verify Identity',
-                      onPressed: _matchImages,
-                      isLoading: _isMatching,
-                    ),
-                    const SizedBox(height: 16),
-                    CustomButton(
-                      text: 'Confirm Registration',
-                      onPressed: _register,
-                      isLoading: _isRegistering,
-                    ),
-                    const SizedBox(height: 16),
-                    CustomButton(
-                      text: 'Bypass Protocol',
-                      onPressed: () {
-                        final user = UserModel(
-                          id: const Uuid().v4(),
-                          name: 'Dummy User',
-                          email: 'dummy@example.com',
-                          password: 'DummyPass123!',
-                          age: 35,
-                        );
-                        Provider.of<UserProvider>(context, listen: false).setUser(user);
-                        Navigator.pushReplacement(
-                          context,
-                          PageRouteBuilder(
-                            pageBuilder: (_, __, ___) => const HomeScreen(),
-                            transitionsBuilder: (_, animation, __, child) {
-                              return SlideTransition(
-                                position: Tween<Offset>(
-                                  begin: const Offset(1.0, 0.0),
-                                  end: Offset.zero,
-                                ).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOut)),
-                                child: child,
-                              );
-                            },
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          decoration: const BoxDecoration(
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.cyanAccent,
+                                blurRadius: 5,
+                                spreadRadius: 1,
+                              ),
+                            ],
                           ),
-                        );
-                      },
+                          child: const Icon(
+                            Icons.verified_user,
+                            color: Colors.white,
+                            size: 24.0,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        CustomButton(
+                          text: 'Verify Identity',
+                          onPressed: () {
+                            if (kDebugMode) {
+                              print('Verify Identity button tapped');
+                            }
+                            _matchImages();
+                          },
+                          isLoading: _isMatching,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          decoration: const BoxDecoration(
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.cyanAccent,
+                                blurRadius: 5,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.check_circle,
+                            color: Colors.cyanAccent,
+                            size: 24.0,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        CustomButton(
+                          text: 'Confirm Registration',
+                          onPressed: () {
+                            if (kDebugMode) {
+                              print('Confirm Registration button tapped');
+                            }
+                            _register();
+                          },
+                          isLoading: _isRegistering,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          decoration: const BoxDecoration(
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.cyanAccent,
+                                blurRadius: 5,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.vpn_key,
+                            color: Colors.cyanAccent,
+                            size: 24.0,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        CustomButton(
+                          text: 'Bypass Protocol',
+                          onPressed: () {
+                            if (kDebugMode) {
+                              print('Bypass Protocol button tapped');
+                            }
+                            final user = UserModel(
+                              id: const Uuid().v4(),
+                              name: 'Dummy User',
+                              email: 'dummy@example.com',
+                              password: 'DummyPass123!',
+                              age: 35,
+                            );
+                            Provider.of<UserProvider>(context, listen: false).setUser(user);
+                            Navigator.pushReplacement(
+                              context,
+                              PageRouteBuilder(
+                                pageBuilder: (_, __, ___) => const HomeScreen(),
+                                transitionsBuilder: (_, animation, __, child) {
+                                  return SlideTransition(
+                                    position: Tween<Offset>(
+                                      begin: const Offset(1.0, 0.0),
+                                      end: Offset.zero,
+                                    ).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOut)),
+                                    child: child,
+                                  );
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ],
                 ),
