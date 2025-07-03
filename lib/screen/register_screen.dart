@@ -15,10 +15,10 @@ import '../model/user_model.dart';
 import '../providers/user_provider.dart';
 import '../utils/helpers.dart';
 import 'home_screen.dart';
-import './cosmic_background.dart';
-import './cosmic_progress_bar.dart';
-import './animated_success.dart';
-import './animated_failure.dart';
+import 'cosmic_background.dart';
+import 'cosmic_progress_bar.dart';
+import 'animated_success.dart';
+import 'animated_failure.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
