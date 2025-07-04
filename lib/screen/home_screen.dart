@@ -22,9 +22,9 @@ class _HomeScreenState extends State<HomeScreen> {
   late Timer _timer;
 
   final List<String> imageUrls = [
-    'https://raw.githubusercontent.com/DIV-SYSTEM/g_map/master/assets/images/sport_comp.jpg',
-    'https://raw.githubusercontent.com/DIV-SYSTEM/g_map/master/assets/images/food-comp.jpg',
-    'https://raw.githubusercontent.com/DIV-SYSTEM/g_map/master/assets/images/travel-comp.jpg',
+    'https://raw.githubusercontent.com/DIV-SYSTEM/g_map/master/assets/images/cars1.jpg',
+    'https://raw.githubusercontent.com/DIV-SYSTEM/g_map/master/assets/images/foody.jpg',
+    'https://raw.githubusercontent.com/DIV-SYSTEM/g_map/master/assets/images/workout1.jpg',
   ];
 
   @override
