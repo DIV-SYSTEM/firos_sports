@@ -60,7 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Companion Finder'),
+        title: const Text('Explore Companion'),
         centerTitle: true,
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
@@ -99,7 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     _buildAnimatedCard(
                       context,
                       icon: Icons.sports_soccer,
-                      title: "Find Your Sports Companion",
+                      title: "Explore Sports buddy",
                       color: Colors.blueAccent,
                       onTap: () => Navigator.push(
                         context,
@@ -124,7 +124,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     _buildAnimatedCard(
                       context,
                       icon: Icons.travel_explore,
-                      title: "Find Your Travel Companion",
+                      title: "Explore Travel Companion",
                       color: Colors.teal,
                       onTap: () => Navigator.push(
                         context,
